@@ -475,7 +475,7 @@ function handleAddItem(itemIconGroupId?: number) {
           <!-- 组纵向排列 -->
           <div
             v-for="(itemGroup, itemGroupIndex) in filterItems"
-            :id="'usagi-group-' + itemGroup.id"
+            :id="`usagi-group-${itemGroup.id}`"
             :key="itemGroup.id ?? itemGroupIndex"
             class="item-list"
             :class="itemGroup.sortStatus ? 'usagi-group-sorting' : ''"

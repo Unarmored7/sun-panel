@@ -138,7 +138,7 @@ onMounted(() => {
     </div>
 
     <div class="search-container flex rounded-2xl items-center justify-center text-white w-full" :style="{ background, color: textColor, borderColor }" :class="{ focused: isFocused }">
-      <div class="search-box-btn-engine w-[38px] flex justify-center cursor-pointer" :title="'当前引擎: ' + state.currentSearchEngine.title" @click="handleEngineClick">
+      <div class="search-box-btn-engine w-[38px] flex justify-center cursor-pointer" :title="`当前引擎: ${state.currentSearchEngine.title}`" @click="handleEngineClick">
         <NAvatar :src="state.currentSearchEngine.iconSrc" style="background-color: transparent;" :size="20" />
       </div>
 
@@ -153,7 +153,7 @@ onMounted(() => {
       <div v-if="searchTerm !== ''" class="search-box-btn-clear w-[25px] mr-[6px] flex justify-center cursor-pointer" title="清空 (Esc)" @click="handleClearSearchTerm">
         <SvgIcon style="width: 18px;height: 18px;" icon="line-md:close-small" />
       </div>
-      <div class="search-box-btn-search w-[32px] flex justify-center cursor-pointer" :title="'在 ' + state.currentSearchEngine.title + ' 中搜索'" @click="handleSearchClick">
+      <div class="search-box-btn-search w-[32px] flex justify-center cursor-pointer" :title="`在 ${state.currentSearchEngine.title} 中搜索`" @click="handleSearchClick">
         <SvgIcon style="width: 18px;height: 18px;" icon="iconamoon:search-fill" />
       </div>
     </div>

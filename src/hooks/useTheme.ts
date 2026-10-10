@@ -20,19 +20,56 @@ export function useTheme() {
   })
 
   const themeOverrides = computed<GlobalThemeOverrides>(() => {
-    if (isDark.value) {
-      return {
-        common: {},
-      }
-    }
     const tokens = getComputedStyle(document.documentElement)
     const token = (name: string, fallback: string) => tokens.getPropertyValue(name).trim() || fallback
+
+    if (isDark.value) {
+      return {
+        common: {
+          primaryColor: '#FFB7CE',
+          primaryColorHover: '#FFC9DA',
+          primaryColorPressed: '#F28BB6',
+          primaryColorSuppl: '#FFB7CE',
+          bodyColor: '#1E1A18',
+          cardColor: '#282220',
+          modalColor: '#282220',
+          popoverColor: '#332B28',
+          textColorBase: '#F5EBE6',
+          textColor1: '#F5EBE6',
+          textColor2: '#F5EBE6',
+          textColor3: 'rgba(245, 235, 230, 0.65)',
+          borderColor: '#3E3532',
+          borderRadius: token('--usagi-radius-md', '6px'),
+          fontFamily: token('--usagi-font-body', 'sans-serif'),
+          lineHeight: '1.7',
+        },
+        Card: { borderRadius: token('--usagi-radius-lg', '10px'), color: '#282220', borderColor: '#3E3532' },
+        Modal: { color: '#282220' },
+        Popover: { color: '#332B28' },
+        Dropdown: { color: '#282220' },
+        Tooltip: { color: '#332B28' },
+        Button: { borderRadiusMedium: token('--usagi-radius-md', '6px') },
+      }
+    }
+
     return {
       common: {
-        primaryColor: token('--usagi-pink-dark', '#C2597F'), primaryColorHover: token('--usagi-pink-hover', '#F28BB6'), primaryColorPressed: token('--usagi-pink-deep', '#9A284E'), primaryColorSuppl: token('--usagi-pink-dark', '#C2597F'),
-        bodyColor: token('--usagi-bg-base', '#FAF2E6'), cardColor: token('--usagi-bg-card', '#FFFFFF'), modalColor: token('--usagi-bg-card', '#FFFFFF'), popoverColor: token('--usagi-bg-alt', '#FFFDF9'),
-        textColorBase: token('--usagi-text-main', '#3A3131'), textColor1: token('--usagi-text-main', '#3A3131'), textColor2: token('--usagi-text-main', '#3A3131'), textColor3: token('--usagi-text-muted', 'rgba(58,49,49,.65)'),
-        borderColor: token('--usagi-brown-border', '#E3D8C8'), borderRadius: token('--usagi-radius-md', '6px'), fontFamily: token('--usagi-font-body', 'sans-serif'), lineHeight: '1.7',
+        primaryColor: token('--usagi-pink-dark', '#C2597F'),
+        primaryColorHover: token('--usagi-pink-hover', '#F28BB6'),
+        primaryColorPressed: token('--usagi-pink-deep', '#9A284E'),
+        primaryColorSuppl: token('--usagi-pink-dark', '#C2597F'),
+        bodyColor: token('--usagi-bg-base', '#FAF2E6'),
+        cardColor: token('--usagi-bg-card', '#FFFFFF'),
+        modalColor: token('--usagi-bg-card', '#FFFFFF'),
+        popoverColor: token('--usagi-bg-alt', '#FFFDF9'),
+        textColorBase: token('--usagi-text-main', '#3A3131'),
+        textColor1: token('--usagi-text-main', '#3A3131'),
+        textColor2: token('--usagi-text-main', '#3A3131'),
+        textColor3: token('--usagi-text-muted', 'rgba(58,49,49,.65)'),
+        borderColor: token('--usagi-brown-border', '#E3D8C8'),
+        borderRadius: token('--usagi-radius-md', '6px'),
+        fontFamily: token('--usagi-font-body', 'sans-serif'),
+        lineHeight: '1.7',
       },
       Card: { borderRadius: token('--usagi-radius-lg', '10px') },
       Button: { borderRadiusMedium: token('--usagi-radius-md', '6px') },

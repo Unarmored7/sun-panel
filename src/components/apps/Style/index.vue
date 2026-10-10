@@ -76,9 +76,9 @@ function resetPanelConfig() {
 </script>
 
 <template>
-  <div class="bg-slate-200 dark:bg-zinc-900 rounded-[10px] p-[8px] overflow-auto">
+  <div class="bg-stone-100 dark:bg-stone-900 rounded-2xl p-[10px] overflow-auto">
     <NCard style="border-radius:10px" size="small">
-      <div class="text-slate-500 mb-[5px] font-bold">
+      <div class="text-[var(--usagi-pink-dark)] dark:text-[#FFB7CE] mb-[5px] font-bold">
         LOGO
       </div>
 

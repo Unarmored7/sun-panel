@@ -131,6 +131,30 @@ async function getIconByUrl(url: string, loadingIndex: number) {
   getIconLoading.value[loadingIndex] = false
 }
 
+function handleUrlBlur() {
+  const url = model.value.url?.trim()
+  if (!url || !url.startsWith('http'))
+    return
+
+  // Auto-fill title if empty
+  if (!model.value.title) {
+    try {
+      const parsed = new URL(url)
+      const hostname = parsed.hostname.replace(/^www\./, '')
+      const namePart = hostname.split('.')[0]
+      if (namePart)
+        model.value.title = namePart.charAt(0).toUpperCase() + namePart.slice(1)
+    }
+    catch (e) {
+      // ignore
+    }
+  }
+
+  // Auto-fetch icon if not present
+  if (!model.value.icon)
+    getIconByUrl(url, 0)
+}
+
 watch(() => props.visible, (newValue) => {
   if (newValue === true) {
     model.value = props.itemInfo ? { ...props.itemInfo } : { ...restoreDefault }
@@ -189,7 +213,7 @@ function getGroupListOptions() {
         <NFormItem path="url" :label="$t('iconItem.url')">
           <!-- <NSelect :style="{ width: '100px' }" :options="urlProtocolOptions" /> -->
           <NInputGroup>
-            <NInput v-model:value="model.url" type="text" :maxlength="1000" placeholder="http(s)://" />
+            <NInput v-model:value="model.url" type="text" :maxlength="1000" placeholder="http(s)://" @blur="handleUrlBlur" />
             <NButton :disabled="!model.url" :loading="getIconLoading[0]" @click="getIconByUrl(model.url, 0)">
               {{ $t('iconItem.getIcon') }}
             </NButton>
@@ -213,7 +237,7 @@ function getGroupListOptions() {
     </div>
 
     <template #footer>
-      <NButton type="success" :loading="submitLoading" style="float: right;" @click="handleValidateButtonClick">
+      <NButton type="primary" :loading="submitLoading" style="float: right;" @click="handleValidateButtonClick">
         {{ $t('common.save') }}
       </NButton>
     </template>

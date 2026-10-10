@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { VueDraggable } from 'vue-draggable-plus'
-import { NBackTop, NButton, NButtonGroup, NDropdown, NModal, NSkeleton, NSpin, useDialog, useMessage } from 'naive-ui'
-import { nextTick, onMounted, ref } from 'vue'
+import { NButton, NDropdown, NModal, NSkeleton, NSpin, useDialog, useMessage } from 'naive-ui'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { AppIcon, AppStarter, EditItem } from './components'
 import { Clock, SearchBox, SystemMonitor } from '@/components/deskModule'
 import { SvgIcon } from '@/components/common'
@@ -16,6 +16,8 @@ import { router } from '@/router'
 import { t } from '@/locales'
 import { resolveGroupCardStyle } from '@/utils/groupCardStyle'
 import UsagiFooter from '@/components/usagi/UsagiFooter.vue'
+import UsagiCategoryTabs from '@/components/usagi/UsagiCategoryTabs.vue'
+import UsagiFloatingIsland from '@/components/usagi/UsagiFloatingIsland.vue'
 
 interface ItemGroup extends Panel.ItemIconGroup {
   sortStatus?: boolean
@@ -47,6 +49,65 @@ const settingModalShow = ref(false)
 
 const items = ref<ItemGroup[]>([])
 const filterItems = ref<ItemGroup[]>([])
+const activeGroupId = ref<number | 'all'>('all')
+const currentSearchKeyword = ref<string>('')
+const showBackTop = ref<boolean>(false)
+
+const totalBookmarkCount = computed(() => {
+  return items.value.reduce((acc, g) => acc + (g.items?.length || 0), 0)
+})
+
+const categoryGroups = computed(() => {
+  return items.value.map(g => ({
+    id: g.id,
+    title: g.title || '',
+    itemCount: g.items?.length || 0,
+    publicVisitHide: g.publicVisitHide,
+  }))
+})
+
+const filteredMatchCount = computed(() => {
+  return filterItems.value.reduce((acc, g) => acc + (g.items?.length || 0), 0)
+})
+
+function handleCategorySelect(id: number | 'all') {
+  activeGroupId.value = id
+  if (id === 'all') {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    return
+  }
+  const el = document.getElementById(`usagi-group-${id}`)
+  if (el) {
+    const y = el.getBoundingClientRect().top + window.pageYOffset - 90
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+  }
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function handleScroll() {
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop
+  showBackTop.value = scrollY > 260
+
+  if (!currentSearchKeyword.value && items.value.length > 0) {
+    const scrollPos = scrollY + 120
+    let currentId: number | 'all' = 'all'
+
+    for (let i = 0; i < items.value.length; i++) {
+      const g = items.value[i]
+      if (!g.id)
+        continue
+      const el = document.getElementById(`usagi-group-${g.id}`)
+      if (el) {
+        if (scrollPos >= el.offsetTop)
+          currentId = g.id
+      }
+    }
+    activeGroupId.value = currentId
+  }
+}
 
 function openPage(openMethod: number, url: string, title?: string) {
   switch (openMethod) {
@@ -270,29 +331,40 @@ onMounted(() => {
   // 设置标题
   if (panelState.panelConfig.logoText)
     setTitle(panelState.panelConfig.logoText)
+
+  window.addEventListener('scroll', handleScroll, { passive: true })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
 
 // 前端搜索过滤
 function itemFrontEndSearch(keyword?: string) {
-  keyword = keyword?.trim()
-  if (keyword !== '' && panelState.panelConfig.searchBoxSearchIcon) {
-    const filteredData = ref<ItemGroup[]>([])
+  const kw = keyword?.trim() || ''
+  currentSearchKeyword.value = kw
+  if (kw !== '') {
+    const filteredData: ItemGroup[] = []
     for (let i = 0; i < items.value.length; i++) {
       const element = items.value[i].items?.filter((item: Panel.ItemInfo) => {
         return (
-          item.title.toLowerCase().includes(keyword?.toLowerCase() ?? '')
-          || item.url.toLowerCase().includes(keyword?.toLowerCase() ?? '')
-          || item.description?.toLowerCase().includes(keyword?.toLowerCase() ?? '')
+          item.title.toLowerCase().includes(kw.toLowerCase())
+          || item.url.toLowerCase().includes(kw.toLowerCase())
+          || (item.description && item.description.toLowerCase().includes(kw.toLowerCase()))
         )
       })
       if (element && element.length > 0)
-        filteredData.value.push({ ...items.value[i], items: element, hoverStatus: false })
+        filteredData.push({ ...items.value[i], items: element, hoverStatus: false })
     }
-    filterItems.value = filteredData.value
+    filterItems.value = filteredData
   }
   else {
     filterItems.value = items.value
   }
+}
+
+function handleClearSearch() {
+  itemFrontEndSearch('')
 }
 
 function handleSetHoverStatus(groupIndex: number, hoverStatus: boolean) {
@@ -366,6 +438,25 @@ function handleAddItem(itemIconGroupId?: number) {
           </div>
         </header>
 
+        <!-- 分类吸顶导航栏 -->
+        <UsagiCategoryTabs
+          v-if="!currentSearchKeyword && categoryGroups.length > 1"
+          :groups="categoryGroups"
+          :active-id="activeGroupId"
+          :total-count="totalBookmarkCount"
+          @select="handleCategorySelect"
+        />
+
+        <!-- 搜索匹配反馈条 -->
+        <div v-if="currentSearchKeyword" class="usagi-search-feedback">
+          <span class="feedback-text">
+            搜索 “<strong>{{ currentSearchKeyword }}</strong>”：共匹配到 <strong>{{ filteredMatchCount }}</strong> 个书签
+          </span>
+          <button type="button" class="feedback-clear-btn" @click="handleClearSearch">
+            <SvgIcon icon="line-md:close-small" class="inline text-base" /> 清除搜索
+          </button>
+        </div>
+
         <!-- 应用盒子 -->
         <div :style="{ marginLeft: `${panelState.panelConfig.marginX}px`, marginRight: `${panelState.panelConfig.marginX}px` }">
           <!-- 系统监控状态 -->
@@ -383,7 +474,9 @@ function handleAddItem(itemIconGroupId?: number) {
 
           <!-- 组纵向排列 -->
           <div
-            v-for="(itemGroup, itemGroupIndex) in filterItems" :key="itemGroupIndex"
+            v-for="(itemGroup, itemGroupIndex) in filterItems"
+            :id="'usagi-group-' + itemGroup.id"
+            :key="itemGroup.id ?? itemGroupIndex"
             class="item-list"
             :class="itemGroup.sortStatus ? 'usagi-group-sorting' : ''"
             @mouseenter="handleSetHoverStatus(itemGroupIndex, true)"
@@ -509,58 +602,19 @@ function handleAddItem(itemIconGroupId?: number) {
       :options="getDropdownMenuOptions()" :show="dropdownShow" :on-clickoutside="onClickoutside" @select="handleRightMenuSelect"
     />
 
-    <!-- 悬浮按钮 -->
-    <div class="fixed-element">
-      <NButtonGroup vertical>
-        <!-- 网络模式切换按钮组 -->
-        <NButton
-          v-if="panelState.networkMode === PanelStateNetworkModeEnum.lan && panelState.panelConfig.netModeChangeButtonShow" type="primary" secondary
-          :title="t('panelHome.changeToWanModel')" @click="handleChangeNetwork(PanelStateNetworkModeEnum.wan)"
-        >
-          <template #icon>
-            <SvgIcon class="usagi-action-icon font-xl" icon="material-symbols:lan-outline-rounded" />
-          </template>
-        </NButton>
+    <!-- 悬浮控制岛与应用中心 -->
+    <UsagiFloatingIsland
+      :network-mode="panelState.networkMode"
+      :net-mode-change-button-show="panelState.panelConfig.netModeChangeButtonShow"
+      :visit-mode="authStore.visitMode"
+      :show-back-top="showBackTop"
+      @change-network="handleChangeNetwork"
+      @open-settings="settingModalShow = !settingModalShow"
+      @go-login="router.push('/login')"
+      @scroll-to-top="scrollToTop"
+    />
 
-        <NButton
-          v-if="panelState.networkMode === PanelStateNetworkModeEnum.wan && panelState.panelConfig.netModeChangeButtonShow" type="primary" secondary
-          :title="t('panelHome.changeToLanModel')" @click="handleChangeNetwork(PanelStateNetworkModeEnum.lan)"
-        >
-          <template #icon>
-            <SvgIcon class="usagi-action-icon font-xl" icon="mdi:wan" />
-          </template>
-        </NButton>
-
-        <NButton v-if="authStore.visitMode === VisitMode.VISIT_MODE_LOGIN" type="primary" secondary @click="settingModalShow = !settingModalShow">
-          <template #icon>
-            <SvgIcon class="usagi-action-icon font-xl" icon="majesticons-applications" />
-          </template>
-        </NButton>
-
-        <NButton v-if="authStore.visitMode === VisitMode.VISIT_MODE_PUBLIC" type="primary" secondary :title="$t('panelHome.goToLogin')" @click="router.push('/login')">
-          <template #icon>
-            <SvgIcon class="usagi-action-icon font-xl" icon="material-symbols:account-circle" />
-          </template>
-        </NButton>
-      </NButtonGroup>
-
-      <AppStarter v-model:visible="settingModalShow" />
-      <!-- <Setting v-model:visible="settingModalShow" /> -->
-    </div>
-
-    <NBackTop
-      :right="12"
-      :bottom="194"
-      style="background-color:transparent;border: none;box-shadow: none;"
-    >
-      <div class="usagi-floating-control">
-        <NButton type="primary" secondary>
-          <template #icon>
-            <SvgIcon class="usagi-action-icon font-xl" icon="icon-park-outline:to-top" />
-          </template>
-        </NButton>
-      </div>
-    </NBackTop>
+    <AppStarter v-model:visible="settingModalShow" />
 
     <EditItem v-model:visible="editItemInfoShow" :item-info="editItemInfoData" :item-group-id="currentAddItenIconGroupId" @done="handleEditSuccess" />
 
@@ -596,5 +650,38 @@ function handleAddItem(itemIconGroupId?: number) {
 
 <style scoped>
 .mask { width: 100%; height: 100%; }
-.fixed-element { position: fixed; right: 12px; bottom: 112px; }
+.usagi-search-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 680px;
+  margin: 14px auto 22px;
+  padding: 8px 18px;
+  background: var(--usagi-pink-wash, rgba(255, 183, 206, 0.18));
+  border: 1px solid var(--usagi-pink-primary, #FFB7CE);
+  border-radius: 9999px;
+  font-size: 13px;
+  color: var(--usagi-text-main, #3A3131);
+}
+.feedback-text strong {
+  color: var(--usagi-pink-dark, #C2597F);
+}
+.feedback-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--usagi-pink-dark, #C2597F);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.feedback-clear-btn:hover {
+  background: #FFFFFF;
+  color: var(--usagi-pink-deep, #9A284E);
+}
 </style>

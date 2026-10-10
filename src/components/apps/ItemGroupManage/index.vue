@@ -148,7 +148,7 @@ onMounted(() => {
 <template>
   <div class="h-full">
     <div class="p-2">
-      <NButton type="success" size="small" style="margin-right: 10px;" @click="handleAddGroup">
+      <NButton type="primary" size="small" style="margin-right: 10px;" @click="handleAddGroup">
         {{ $t('common.add') }}
       </NButton>
 
@@ -161,7 +161,7 @@ onMounted(() => {
       </NButton>
     </div>
 
-    <div class=" overflow-auto w-full mt-[20px]  bg-slate-200 dark:bg-zinc-900 rounded-xl" style="height:calc(100% - 65px)">
+    <div class=" overflow-auto w-full mt-[20px] bg-stone-100 dark:bg-zinc-900/60 rounded-xl" style="height:calc(100% - 65px)">
       <VueDraggable
         v-model="groups"
         item-key="sort" :animation="300"
@@ -173,7 +173,7 @@ onMounted(() => {
             <div class="flex" :class="sortStatus ? 'cursor-move' : ''">
               <div class="flex items-center">
                 <span class="mr-[10px]">
-                  <SvgIcon class="text-[20px]" icon="material-symbols:ad-group-outline-rounded" />
+                  <SvgIcon class="text-[20px] usagi-action-icon" icon="material-symbols:ad-group-outline-rounded" />
                   <!-- <SvgIcon class="text-[20px]" :icon="item.icon" /> -->
                 </span>
                 <span>
@@ -182,7 +182,7 @@ onMounted(() => {
               </div>
               <div class="ml-auto">
                 <span>
-                  <NButton strong secondary type="success" size="small" @click="handleEditGroup(item)">
+                  <NButton strong secondary type="primary" size="small" @click="handleEditGroup(item)">
                     <template #icon>
                       <SvgIcon icon="basil:edit-solid" />
                     </template>
@@ -227,7 +227,7 @@ onMounted(() => {
         </template>
       </NForm>
       <template #footer>
-        <NButton type="success" size="small" class="float-right" @click="handleSaveGroup">
+        <NButton type="primary" size="small" class="float-right" @click="handleSaveGroup">
           {{ $t('common.confirm') }}
         </NButton>
       </template>

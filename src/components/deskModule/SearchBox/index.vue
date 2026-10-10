@@ -122,39 +122,55 @@ onMounted(() => {
 
 <template>
   <div class="search-box w-full" @keydown.enter="handleSearchClick" @keydown.esc="handleClearSearchTerm">
+    <!-- 快捷搜索引擎胶囊栏 -->
+    <div class="search-engine-pills flex items-center justify-center gap-2 mb-2">
+      <button
+        v-for="(item, index) in state.searchEngineList"
+        :key="index"
+        type="button"
+        class="engine-pill-btn"
+        :class="{ 'is-active': state.currentSearchEngine.title === item.title }"
+        @click="handleEngineUpdate(item)"
+      >
+        <NAvatar :src="item.iconSrc" style="background-color: transparent;" :size="15" />
+        <span class="engine-title text-xs font-medium">{{ item.title }}</span>
+      </button>
+    </div>
+
     <div class="search-container flex rounded-2xl items-center justify-center text-white w-full" :style="{ background, color: textColor, borderColor }" :class="{ focused: isFocused }">
-      <div class="search-box-btn-engine w-[40px] flex justify-center cursor-pointer" @click="handleEngineClick">
+      <div class="search-box-btn-engine w-[38px] flex justify-center cursor-pointer" :title="'当前引擎: ' + state.currentSearchEngine.title" @click="handleEngineClick">
         <NAvatar :src="state.currentSearchEngine.iconSrc" style="background-color: transparent;" :size="20" />
       </div>
 
-      <input v-model="searchTerm" :placeholder="$t('deskModule.searchBox.inputPlaceholder')" @focus="onFocus" @blur="onBlur" @input="handleItemSearch">
+      <input
+        v-model="searchTerm"
+        :placeholder="`搜索书签，或按 Enter 在 ${state.currentSearchEngine.title} 中全网搜索...`"
+        @focus="onFocus"
+        @blur="onBlur"
+        @input="handleItemSearch"
+      >
 
-      <div v-if="searchTerm !== ''" class="search-box-btn-clear w-[25px] mr-[10px] flex justify-center cursor-pointer" @click="handleClearSearchTerm">
-        <SvgIcon style="width: 20px;height: 20px;" icon="line-md:close-small" />
+      <div v-if="searchTerm !== ''" class="search-box-btn-clear w-[25px] mr-[6px] flex justify-center cursor-pointer" title="清空 (Esc)" @click="handleClearSearchTerm">
+        <SvgIcon style="width: 18px;height: 18px;" icon="line-md:close-small" />
       </div>
-      <div class="search-box-btn-search w-[25px] flex justify-center cursor-pointer" @click="handleSearchClick">
-        <SvgIcon style="width: 20px;height: 20px;" icon="iconamoon:search-fill" />
+      <div class="search-box-btn-search w-[32px] flex justify-center cursor-pointer" :title="'在 ' + state.currentSearchEngine.title + ' 中搜索'" @click="handleSearchClick">
+        <SvgIcon style="width: 18px;height: 18px;" icon="iconamoon:search-fill" />
       </div>
     </div>
 
-    <!-- 搜索引擎选择 -->
-    <div v-if="searchSelectListShow" class="w-full mt-[10px] rounded-xl p-[10px]" :style="{ background }">
+    <!-- 搜索引擎详细弹层（更多选项） -->
+    <div v-if="searchSelectListShow" class="w-full mt-[10px] rounded-xl p-[10px] shadow-sm" :style="{ background }">
       <div class="flex items-center">
         <div class="flex items-center">
           <div
             v-for="item, index in defaultSearchEngineList"
             :key="index"
             :title="item.title"
-            class="w-[40px] h-[40px] mr-[10px]  cursor-pointer bg-[#ffffff] flex items-center justify-center rounded-xl"
+            class="w-[40px] h-[40px] mr-[10px] cursor-pointer bg-[#ffffff] flex items-center justify-center rounded-xl border border-stone-200 hover:border-pink-300 transition-all"
             @click="handleEngineUpdate(item)"
           >
             <NAvatar :src="item.iconSrc" style="background-color: transparent;" :size="20" />
           </div>
-        <!-- <div class="w-[40px] h-[40px] ml-[10px] flex justify-center items-center cursor-pointer" @click="handleEngineClick">
-          <NAvatar style="background-color: transparent;" :size="30">
-            <SvgIcon icon="lets-icons:setting-alt-fill" style="font-size: 20px;" />
-          </NAvatar>
-        </div> -->
         </div>
       </div>
 
@@ -171,25 +187,40 @@ onMounted(() => {
 
 <style scoped>
 .search-container {
-  border: 1px solid #ccc;
-  transition: box-shadow 0.5s,backdrop-filter 0.5s;
-  padding: 2px 10px;
-  backdrop-filter:blur(2px)
+  border: 1px solid var(--usagi-brown-border, #E3D8C8);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  padding: 4px 12px;
+}
+
+.engine-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--usagi-text-muted, #8A7A6A);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.engine-pill-btn:hover {
+  background: var(--usagi-pink-wash, rgba(255, 183, 206, 0.2));
+  color: var(--usagi-pink-dark, #C2597F);
+}
+
+.engine-pill-btn.is-active {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: var(--usagi-pink-primary, #FFB7CE);
+  color: var(--usagi-pink-dark, #C2597F);
+  box-shadow: 0 2px 8px rgba(255, 183, 206, 0.3);
 }
 
 .focused, .search-container:hover {
-  box-shadow: 0px 0px 30px -5px rgba(41, 41, 41, 0.45);
-  -webkit-box-shadow: 0px 0px 30px -5px rgba(0, 0, 0, 0.45);
-  -moz-box-shadow: 0px 0px 30px -5px rgba(0, 0, 0, 0.45);
-  backdrop-filter:blur(5px)
-}
-
-.before {
-  left: 10px;
-}
-
-.after {
-  right: 10px;
+  border-color: var(--usagi-pink-primary, #FFB7CE) !important;
+  box-shadow: 0 0 0 3px var(--usagi-pink-wash, rgba(255, 183, 206, 0.25)) !important;
 }
 
 input {
@@ -197,9 +228,14 @@ input {
   box-sizing: border-box;
   width: 100%;
   height: 40px;
-  padding: 10px 5px;
+  padding: 8px 10px;
   border: none;
   outline: none;
-  font-size: 17px;
+  font-size: 15px;
+  color: inherit;
+}
+
+input::placeholder {
+  color: var(--usagi-text-muted, rgba(58, 49, 49, 0.45));
 }
 </style>

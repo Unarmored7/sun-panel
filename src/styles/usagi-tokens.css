@@ -44,3 +44,36 @@
   --usagi-shadow-hover: 0 8px 24px rgba(138, 122, 106, 0.16); /* 悬浮态深阴影 */
   --usagi-shadow-sm: 0 2px 10px rgba(138, 122, 106, 0.04);    /* 轻微浮层 */
 }
+
+/* ================= Usagi 专属暖夜暗黑模式 (Warm Night Dark Palette) ================= */
+:root.dark,
+[data-theme="dark"] {
+  /* 背景基底色 (Warm Espresso & Dark Cocoa) */
+  --usagi-bg-base: #1E1A18;          /* 全局暖可可暗夜大背景 */
+  --usagi-bg-card: #282220;          /* 暖调暗夜卡片底色 */
+  --usagi-bg-alt: #332B28;           /* 浅层交替底色 */
+  --usagi-bg-hover: rgba(255, 183, 206, 0.12); /* 列表行悬浮高亮 */
+
+  /* 品牌兔兔粉 (Usagi Pink Accent in Dark Mode) */
+  --usagi-pink-primary: #FFB7CE;     /* 乌萨奇亮粉 */
+  --usagi-pink-hover: #FFC9DA;       /* 交互悬浮亮粉 */
+  --usagi-pink-dark: #FFB7CE;        /* 图标/强调 */
+  --usagi-pink-deep: #FFA8C4;        /* 高亮文字 */
+  --usagi-pink-wash: rgba(255, 183, 206, 0.20); /* 半透明粉底 */
+
+  /* 大地暖棕深色 (Dark Usagi Earth) */
+  --usagi-brown-footer: #181413;     /* 沉底暗黑页脚 */
+  --usagi-brown-text: #F5EBE6;       /* 页脚文字暖白 */
+  --usagi-brown-mute: rgba(245, 235, 230, 0.65);
+  --usagi-brown-border: #3E3532;     /* 卡片边框 */
+  --usagi-brown-border-subtle: rgba(70, 60, 56, 0.7);
+
+  /* 正文与排版文字色 */
+  --usagi-text-main: #F5EBE6;        /* 柔和暖白主文字，不刺眼 */
+  --usagi-text-muted: rgba(245, 235, 230, 0.65); /* 次级辅助文字 */
+
+  /* 阴影与微光晕 */
+  --usagi-shadow-card: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --usagi-shadow-hover: 0 8px 26px rgba(255, 183, 206, 0.20); /* 悬浮粉调微光晕 */
+  --usagi-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.25);
+}

@@ -120,10 +120,10 @@ onUnmounted(() => {
     >
       <template #header>
         <div class="flex items-center select-none" @click="collapsed = !collapsed">
-          <div class="text-3xl cursor-pointer" style="color:var(--n-color-target)">
+          <div class="text-3xl cursor-pointer text-[#C2597F] dark:text-[#FFB7CE]">
             <SvgIcon class=" transition-all duration-500" :icon="collapsed ? 'tabler-layout-sidebar-right-collapse-filled' : 'tabler-layout-sidebar-left-collapse-filled'" />
           </div>
-          <div class="ml-1">
+          <div class="ml-2 font-medium">
             {{ title === '' ? defaultTitle : title }}
           </div>
         </div>
@@ -139,9 +139,9 @@ onUnmounted(() => {
               style="height: 100%;"
               content-style="overflow: hidden"
             >
-              <div class="w-full h-full dark:bg-[#2c2c32]">
+              <div class="w-full h-full">
                 <div
-                  class="p-[5px] bg-slate-200 dark:bg-zinc-900 rounded-xl overflow-auto"
+                  class="p-[6px] bg-stone-100 dark:bg-stone-900 rounded-2xl overflow-auto"
                   :style="{
                     width: isSmallScreen ? '100%' : '220px',
                     minWidth: '200px',
@@ -151,22 +151,20 @@ onUnmounted(() => {
                   <div
                     v-for=" (item, index) in apps"
                     :key="index"
-                    :style="{ color: componentName === item.componentName ? 'var(--n-color-target)' : '' }"
                     @click="handleClickApp(item)"
                   >
                     <div
-                      class="bg-white dark:bg-zinc-800 p-[10px] rounded-lg mb-[5px] font-bold cursor-pointer flex items-center hover:bg-slate-50 focus:bg-slate-50"
+                      class="p-[10px] rounded-xl mb-[6px] font-medium cursor-pointer flex items-center transition-all duration-200"
+                      :class="componentName === item.componentName
+                        ? 'bg-pink-100/80 text-[#C2597F] dark:bg-pink-950/40 dark:text-[#FFB7CE] font-semibold shadow-xs'
+                        : 'bg-white dark:bg-stone-800 text-[var(--usagi-text-main)] hover:bg-pink-50 dark:hover:bg-stone-700'"
                     >
                       <div class="flex items-center justify-center">
                         <div class="text-lg">
                           <SvgIcon :icon="item.icon" />
                         </div>
-                        <span class="ml-2">{{ item.name }}</span>
+                        <span class="ml-2 text-sm">{{ item.name }}</span>
                       </div>
-                    <!-- 更多按钮 -->
-                    <!-- <div class="ml-auto">
-                      <SvgIcon icon="mingcute-more-1-fill" />
-                    </div> -->
                     </div>
                   </div>
                 </div>

@@ -110,12 +110,28 @@ function handleClearSearchTerm() {
   emits('itemSearch', searchTerm.value)
 }
 
+function resolveEngineIcon(engine: DeskModule.SearchBox.SearchEngine) {
+  const builtin = defaultSearchEngineList.value.find((candidate) => {
+    try {
+      return new URL(candidate.url).hostname === new URL(engine.url).hostname
+    }
+    catch {
+      return candidate.title === engine.title
+    }
+  })
+  // Saved settings may reference hashed SVG assets from the previous image.
+  return builtin ? { ...engine, iconSrc: builtin.iconSrc } : engine
+}
+
 onMounted(() => {
   moduleConfig.getValueByNameFromCloud<State>('deskModuleSearchBox').then(({ code, data }) => {
     if (code === 0)
       state.value = data || defaultState
     else
       state.value = defaultState
+
+    state.value.currentSearchEngine = resolveEngineIcon(state.value.currentSearchEngine)
+    state.value.searchEngineList = state.value.searchEngineList.map(resolveEngineIcon)
   })
 })
 </script>

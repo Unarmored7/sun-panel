@@ -123,8 +123,10 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 :root.dark .search-container {
-  background: var(--usagi-bg-card);
-  border-color: var(--usagi-brown-border);
+  /* Older panel settings contain fixed light colors in inline styles. */
+  background: var(--usagi-bg-card) !important;
+  color: var(--usagi-text-main) !important;
+  border-color: var(--usagi-brown-border) !important;
 }
 
 :root.dark .engine-pill-btn {

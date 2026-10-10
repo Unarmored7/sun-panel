@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
-import { NButton, NCard, NForm, NFormItem, NInput, useDialog, useMessage } from 'naive-ui'
+import { NButton, NCard, NForm, NFormItem, NInput, NSelect, NSwitch, useDialog, useMessage } from 'naive-ui'
 import { VueDraggable } from 'vue-draggable-plus'
 import { deletes, edit, getList, saveSort } from '@/api/panel/itemIconGroup'
 import { RoundCardModal, SvgIcon } from '@/components/common'
 import { t } from '@/locales'
+import { parseGroupCardStyle } from '@/utils/groupCardStyle'
 
 interface EditModalArg {
   show: boolean
@@ -23,6 +24,8 @@ const defaultMNodal = {
   title: '',
   icon: 'material-symbols:folder-outline',
   sort: 9999,
+  publicVisitHide: 0,
+  cardStyle: '',
 }
 
 const editModalArg = ref<EditModalArg>({
@@ -41,14 +44,32 @@ const editModalArg = ref<EditModalArg>({
 })
 
 const groups = ref<Panel.ItemIconGroup[]>([])
+const cardStyleForm = ref({ style: -1, textColor: '', textInfoHideDescription: false, textIconHideTitle: false })
+const styleOptions = [
+  { label: t('apps.itemGroupManage.styleGlobal'), value: -1 },
+  { label: t('apps.itemGroupManage.styleInfo'), value: 0 },
+  { label: t('apps.itemGroupManage.styleIcon'), value: 1 },
+]
+
+function loadCardStyle(group: Panel.ItemIconGroup) {
+  cardStyleForm.value = { style: -1, textColor: '', textInfoHideDescription: false, textIconHideTitle: false, ...parseGroupCardStyle(group.cardStyle) }
+}
+
+function setPublicVisibility(value: boolean) {
+  editModalArg.value.model.publicVisitHide = value ? 1 : 0
+}
 
 function handleAddGroup() {
-  editModalArg.value.show = !editModalArg.value.show
+  editModalArg.value.model = { ...defaultMNodal }
+  editModalArg.value.editStatus = 1
+  loadCardStyle(editModalArg.value.model)
+  editModalArg.value.show = true
 }
 
 function handleEditGroup(groupInfo: Panel.ItemIconGroup) {
   editModalArg.value.show = true
-  editModalArg.value.model = groupInfo
+  editModalArg.value.model = { ...groupInfo }
+  loadCardStyle(groupInfo)
   editModalArg.value.editStatus = 2
 }
 
@@ -99,10 +120,11 @@ function handleDelete(groupInfo: Panel.ItemIconGroup) {
 function handleSaveGroup() {
   formRef.value?.validate((errors) => {
     if (!errors) {
-      edit(editModalArg.value.model).then(({ code, msg }) => {
-        if (code !== 0)
+      edit({ ...editModalArg.value.model, cardStyle: cardStyleForm.value.style === -1 ? '' : JSON.stringify(cardStyleForm.value) }).then(({ code, msg }) => {
+        if (code !== 0) {
           ms.error(msg)
-
+          return
+        }
         refreshList()
         editModalArg.value.show = false
         editModalArg.value.model = { ...defaultMNodal }
@@ -186,9 +208,23 @@ onMounted(() => {
           <NInput v-model:value="editModalArg.model.title" type="text" :maxlength="20" show-count />
         </NFormItem>
 
-        <!-- <NFormItem path="name" label="昵称">
-          <NInput v-model:value="editModalArg.model" type="text" placeholder="请输入昵称" />
-        </NFormItem> -->
+        <NFormItem :label="$t('apps.itemGroupManage.hidePublic')">
+          <NSwitch :value="editModalArg.model.publicVisitHide === 1" @update:value="setPublicVisibility" />
+        </NFormItem>
+        <NFormItem :label="$t('apps.itemGroupManage.cardStyle')">
+          <NSelect v-model:value="cardStyleForm.style" :options="styleOptions" />
+        </NFormItem>
+        <template v-if="cardStyleForm.style !== -1">
+          <NFormItem :label="$t('apps.itemGroupManage.textColor')">
+            <NInput v-model:value="cardStyleForm.textColor" placeholder="#ffffff" />
+          </NFormItem>
+          <NFormItem :label="$t('apps.itemGroupManage.hideDescription')">
+            <NSwitch v-model:value="cardStyleForm.textInfoHideDescription" />
+          </NFormItem>
+          <NFormItem :label="$t('apps.itemGroupManage.hideTitle')">
+            <NSwitch v-model:value="cardStyleForm.textIconHideTitle" />
+          </NFormItem>
+        </template>
       </NForm>
       <template #footer>
         <NButton type="success" size="small" class="float-right" @click="handleSaveGroup">

@@ -101,7 +101,15 @@
     "itemGroupManage": {
       "appName": "分组管理",
       "deleteWarnText": "你确定删除此分组[{name}]，删除后此分组应用图标将丢失？",
-      "groupName": "分组名称"
+      "groupName": "分组名称",
+      "hidePublic": "对访客隐藏",
+      "cardStyle": "卡片样式",
+      "styleGlobal": "跟随全局设置",
+      "styleInfo": "详情卡片",
+      "styleIcon": "图标卡片",
+      "textColor": "文字颜色（留空跟随全局）",
+      "hideDescription": "隐藏描述",
+      "hideTitle": "隐藏图标标题"
     },
     "uploadsFileManager": {
       "alertText": "你可以在这里管理你上传过的壁纸和图标",
@@ -131,7 +139,7 @@
     "action": "操作",
     "add": "添加",
     "addSuccess": "添加成功",
-    "appName": "Sun-Panel",
+    "appName": "乌萨奇导航",
     "backgroundColor": "背景颜色",
     "cancel": "取消",
     "confirm": "确定",

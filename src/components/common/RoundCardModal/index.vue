@@ -30,14 +30,14 @@ const showModal = computed({
 </script>
 
 <template>
-  <NModal v-model:show="showModal" preset="card" :size="size" v-bind="bindAttrs" style="border-radius: 1rem;" :style="$parent" :title="title">
+  <NModal v-model:show="showModal" preset="card" :size="size" v-bind="bindAttrs" style="border-radius: var(--usagi-radius-lg);" :title="title">
     <template #cover>
       <slot name="cover" />
     </template>
     <template #header>
       <slot name="header" />
     </template>
-    <template #eader-extra>
+    <template #header-extra>
       <slot name="header-extra" />
     </template>
     <template #footer>

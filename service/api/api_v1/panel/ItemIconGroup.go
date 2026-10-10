@@ -1,12 +1,14 @@
 package panel
 
 import (
-	"math"
+	"encoding/json"
+	"strings"
 	"sun-panel/api/api_v1/common/apiData/commonApiStructs"
 	"sun-panel/api/api_v1/common/apiReturn"
 	"sun-panel/api/api_v1/common/base"
 	"sun-panel/global"
 	"sun-panel/models"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -16,76 +18,107 @@ import (
 type ItemIconGroup struct {
 }
 
-func (a *ItemIconGroup) Edit(c *gin.Context) {
-	userInfo, _ := base.GetCurrentUserInfo(c)
-	req := models.ItemIconGroup{}
-
-	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
-		apiReturn.ErrorParamFomat(c, err.Error())
-		return
-	}
-
-	req.UserId = userInfo.ID
-
-	if req.ID != 0 {
-		// 修改
-		updateField := []string{"IconJson", "Icon", "Title", "Url", "LanUrl", "Description", "OpenMethod", "GroupId", "UserId"}
-		if req.Sort != 0 {
-			updateField = append(updateField, "Sort")
-		}
-		global.Db.Model(&models.ItemIconGroup{}).
-			Select(updateField).
-			Where("id=?", req.ID).Updates(&req)
-	} else {
-		// 创建
-		global.Db.Create(&req)
-	}
-
-	apiReturn.SuccessData(c, req)
+// Optional settings preserve visibility when older clients edit only a title.
+type groupEditRequest struct {
+	ID              uint    `json:"id"`
+	Title           string  `json:"title"`
+	Icon            string  `json:"icon"`
+	Description     string  `json:"description"`
+	Sort            *int    `json:"sort"`
+	PublicVisitHide *int    `json:"publicVisitHide"`
+	CardStyle       *string `json:"cardStyle"`
 }
 
-func (a *ItemIconGroup) GetList(c *gin.Context) {
-
+func (a *ItemIconGroup) Edit(c *gin.Context) {
 	userInfo, _ := base.GetCurrentUserInfo(c)
-	groups := []models.ItemIconGroup{}
-
-	err := global.Db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Order("sort ,created_at").Where("user_id=?", userInfo.ID).Find(&groups).Error; err != nil {
-			apiReturn.ErrorDatabase(c, err.Error())
-			return err
+	req := groupEditRequest{}
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		apiReturn.ErrorCode(c, -1, "Invalid group request", nil)
+		return
+	}
+	req.Title = strings.TrimSpace(req.Title)
+	if req.Title == "" || utf8.RuneCountInString(req.Title) > 50 {
+		apiReturn.ErrorCode(c, -1, "Group title must contain 1 to 50 characters", nil)
+		return
+	}
+	if req.PublicVisitHide != nil && *req.PublicVisitHide != 0 && *req.PublicVisitHide != 1 {
+		apiReturn.ErrorCode(c, -1, "Invalid group visibility", nil)
+		return
+	}
+	if req.CardStyle != nil && *req.CardStyle != "" {
+		var style struct {
+			Style *int `json:"style"`
 		}
-
-		// 判断分组是否为空，为空将自动创建默认分组
-		if len(groups) == 0 {
-			defaultGroup := models.ItemIconGroup{
-				Title:  "APP",
-				UserId: userInfo.ID,
-				Icon:   "material-symbols:ad-group-outline",
-			}
-			if err := tx.Create(&defaultGroup).Error; err != nil {
-				apiReturn.ErrorDatabase(c, err.Error())
-				return err
-			}
-
-			// 并将当前账号下所有无分组的图标更新到当前组
-			if err := tx.Model(&models.ItemIcon{}).Where("user_id=?", userInfo.ID).Update("item_icon_group_id", defaultGroup.ID).Error; err != nil {
-				apiReturn.ErrorDatabase(c, err.Error())
-				return err
-			}
-
-			groups = append(groups, defaultGroup)
+		if len(*req.CardStyle) > 2000 || json.Unmarshal([]byte(*req.CardStyle), &style) != nil ||
+			(style.Style != nil && (*style.Style < -1 || *style.Style > 1)) {
+			apiReturn.ErrorCode(c, -1, "Invalid card style", nil)
+			return
 		}
-
-		// 返回 nil 提交事务
-		return nil
-	})
-
+	}
+	group := models.ItemIconGroup{Title: req.Title, Icon: req.Icon, Description: req.Description, UserId: userInfo.ID}
+	if req.ID != 0 {
+		if err := global.Db.Where("id=? AND user_id=?", req.ID, userInfo.ID).First(&group).Error; err != nil {
+			apiReturn.ErrorCode(c, 1005, "Group is not available", nil)
+			return
+		}
+	}
+	group.Title = req.Title
+	group.Icon = req.Icon
+	group.Description = req.Description
+	if req.Sort != nil {
+		group.Sort = *req.Sort
+	}
+	if req.PublicVisitHide != nil {
+		group.PublicVisitHide = *req.PublicVisitHide
+	}
+	if req.CardStyle != nil {
+		group.CardStyle = *req.CardStyle
+	}
+	var err error
+	if req.ID == 0 {
+		err = global.Db.Create(&group).Error
+	} else {
+		err = global.Db.Model(&group).Where("user_id=?", userInfo.ID).
+			Select("title", "icon", "description", "sort", "public_visit_hide", "card_style").Updates(&group).Error
+	}
 	if err != nil {
 		apiReturn.ErrorDatabase(c, err.Error())
 		return
-	} else {
-		apiReturn.SuccessListData(c, groups, 0)
 	}
+	apiReturn.SuccessData(c, group)
+}
+
+func (a *ItemIconGroup) GetList(c *gin.Context) {
+	userInfo, _ := base.GetCurrentUserInfo(c)
+	groups := []models.ItemIconGroup{}
+	public := base.GetCurrentVisitMode(c) == base.VISIT_MODE_PUBLIC
+	err := global.Db.Transaction(func(tx *gorm.DB) error {
+		query := tx.Order("sort,created_at").Where("user_id=?", userInfo.ID)
+		if public {
+			query = query.Where("public_visit_hide=0 OR public_visit_hide IS NULL")
+		}
+		if err := query.Find(&groups).Error; err != nil {
+			return err
+		}
+		// Reading an empty public page must never create a group or move private cards.
+		if len(groups) == 0 && !public {
+			defaultGroup := models.ItemIconGroup{Title: "APP", UserId: userInfo.ID, Icon: "material-symbols:ad-group-outline"}
+			if err := tx.Create(&defaultGroup).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&models.ItemIcon{}).Where("user_id=? AND (item_icon_group_id=0 OR item_icon_group_id IS NULL)", userInfo.ID).
+				Update("item_icon_group_id", defaultGroup.ID).Error; err != nil {
+				return err
+			}
+			groups = append(groups, defaultGroup)
+		}
+		return nil
+	})
+	if err != nil {
+		apiReturn.ErrorDatabase(c, err.Error())
+		return
+	}
+	apiReturn.SuccessListData(c, groups, 0)
 }
 
 func (a *ItemIconGroup) Deletes(c *gin.Context) {
@@ -102,7 +135,12 @@ func (a *ItemIconGroup) Deletes(c *gin.Context) {
 		apiReturn.ErrorDatabase(c, err.Error())
 		return
 	} else {
-		if math.Abs(float64(len(req.Ids))-float64(count)) < 1 {
+		var selected int64
+		if err := global.Db.Model(&models.ItemIconGroup{}).Where("user_id=? AND id in ?", userInfo.ID, req.Ids).Count(&selected).Error; err != nil {
+			apiReturn.ErrorDatabase(c, err.Error())
+			return
+		}
+		if selected >= count && count > 0 {
 			apiReturn.ErrorCode(c, 1201, "At least one must be retained", nil)
 			return
 		}

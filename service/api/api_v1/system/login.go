@@ -95,8 +95,6 @@ func (l LoginApi) Login(c *gin.Context) {
 	// global.UserToken.SetDefault(bToken, info)
 	cToken := uuid.NewString() + "-" + cmn.Md5(cmn.Md5("userId"+strconv.Itoa(int(info.ID))))
 	global.CUserToken.SetDefault(cToken, bToken)
-	global.Logger.Debug("token:", cToken, "|", bToken)
-	global.Logger.Debug(global.CUserToken.Get(cToken))
 
 	// 设置当前用户信息
 	c.Set("userInfo", info)

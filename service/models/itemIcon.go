@@ -8,6 +8,10 @@ import (
 
 type ItemIcon struct {
 	BaseModel
+	CardType int `gorm:"type:tinyint(1);default:1" json:"cardType"`
+	OnlyName string `gorm:"type:varchar(200)" json:"onlyName"`
+	BackgroundColor string `gorm:"type:varchar(20)" json:"backgroundColor"`
+	ExpandParam string `gorm:"type:text" json:"expandParam"`
 	IconJson        string                    `gorm:"type:varchar(1000)" json:"-"`
 	Icon            datatype.ItemIconIconInfo `gorm:"-" json:"icon"`
 	Title           string                    `gorm:"type:varchar(50)" json:"title"`

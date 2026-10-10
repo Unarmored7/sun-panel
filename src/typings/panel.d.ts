@@ -15,7 +15,17 @@ declare namespace Panel {
         itemIconGroupId ?:number
     }
 
+    interface GroupCardStyle {
+        style?: number
+        textColor?: string
+        textInfoHideDescription?: boolean
+        textIconHideTitle?: boolean
+    }
+
     interface ItemIconGroup extends Common.InfoBase {
+        description?: string
+        publicVisitHide?: number
+        cardStyle?: string
         icon?: string
         title?: string
         sort?:number
@@ -37,6 +47,11 @@ declare namespace Panel {
     }
 
     interface panelConfig{
+        logoShow?: boolean
+        clockShow?: boolean
+        searchBoxBackground?: string
+        searchBoxBorderColor?: string
+        searchBoxTextColor?: string
         backgroundImageSrc?:string
         backgroundBlur?:number
         backgroundMaskNumber?:number

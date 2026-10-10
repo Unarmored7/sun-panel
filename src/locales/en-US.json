@@ -101,7 +101,15 @@
     "itemGroupManage": {
       "appName": "Group Management",
       "deleteWarnText": "Are you sure you want to delete this group [{name}]? The application icons in this group will be lost after deletion.",
-      "groupName": "Group name"
+      "groupName": "Group name",
+      "hidePublic": "Hide from visitors",
+      "cardStyle": "Card style",
+      "styleGlobal": "Use global settings",
+      "styleInfo": "Detail cards",
+      "styleIcon": "Icon cards",
+      "textColor": "Text color (blank uses global setting)",
+      "hideDescription": "Hide description",
+      "hideTitle": "Hide icon title"
     },
     "uploadsFileManager": {
       "alertText": "Here you can manage wallpapers and icons you have uploaded.",
@@ -131,7 +139,7 @@
     "action": "Action",
     "add": "Add",
     "addSuccess": "Added successfully",
-    "appName": "Sun-Panel",
+    "appName": "Usagi Navigation",
     "backgroundColor": "Background color",
     "cancel": "Cancel",
     "confirm": "Confirm",

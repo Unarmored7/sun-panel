@@ -10,7 +10,7 @@ const { language } = useLanguage()
 
 <template>
   <NConfigProvider
-    class="h-full"
+    class="usagi-app"
     :theme="theme"
     :theme-overrides="themeOverrides"
     :locale="language"

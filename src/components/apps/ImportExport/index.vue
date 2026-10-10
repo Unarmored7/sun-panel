@@ -47,6 +47,8 @@ async function importIcons(): Promise<string | null> {
       const createGroupResponse = await addGroup<Panel.ItemIconGroup>({
         title: element.title,
         sort: element.sort,
+        publicVisitHide: element.publicVisitHide,
+        cardStyle: element.cardStyle,
       })
 
       if (createGroupResponse.code === 0) {
@@ -108,6 +110,8 @@ async function exportIcons(): Promise<IconGroup[]> {
     // 使用 Promise.all 等待所有异步操作完成
     await Promise.all(data.list.map(async (element) => {
       const group: IconGroup = {
+        publicVisitHide: element.publicVisitHide,
+        cardStyle: element.cardStyle,
         title: element.title as string,
         sort: element.sort as 0,
         children: [],

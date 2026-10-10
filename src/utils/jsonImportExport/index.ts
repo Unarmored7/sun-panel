@@ -42,6 +42,8 @@ export interface Icon {
 
 // 图标组
 export interface IconGroup {
+  publicVisitHide?: number
+  cardStyle?: string
   title: string
   sort: number
   children: Icon[]

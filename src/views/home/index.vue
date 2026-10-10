@@ -14,6 +14,8 @@ import { PanelPanelConfigStyleEnum, PanelStateNetworkModeEnum } from '@/enums'
 import { VisitMode } from '@/enums/auth'
 import { router } from '@/router'
 import { t } from '@/locales'
+import { resolveGroupCardStyle } from '@/utils/groupCardStyle'
+import UsagiFooter from '@/components/usagi/UsagiFooter.vue'
 
 interface ItemGroup extends Panel.ItemIconGroup {
   sortStatus?: boolean
@@ -26,7 +28,6 @@ const dialog = useDialog()
 const panelState = usePanelState()
 const authStore = useAuthStore()
 
-const scrollContainerRef = ref<HTMLElement | undefined>(undefined)
 
 const editItemInfoShow = ref<boolean>(false)
 const editItemInfoData = ref<Panel.ItemInfo | null>(null)
@@ -34,7 +35,6 @@ const windowShow = ref<boolean>(false)
 const windowSrc = ref<string>('')
 const windowTitle = ref<string>('')
 
-const windowIframeRef = ref(null)
 const windowIframeIsLoad = ref<boolean>(false)
 
 const dropdownMenuX = ref(0)
@@ -91,8 +91,12 @@ function handWindowIframeIdLoad(payload: Event) {
 function getList() {
   // 获取组数据
   getGroupList<Common.ListResponse<ItemGroup[]>>().then(({ code, data, msg }) => {
-    if (code === 0)
-      items.value = data.list
+    if (code !== 0 || !data?.list) {
+      items.value = []
+      filterItems.value = []
+      return
+    }
+    items.value = data.list
     for (let i = 0; i < data.list.length; i++) {
       const element = data.list[i]
       if (element.id)
@@ -282,7 +286,7 @@ function itemFrontEndSearch(keyword?: string) {
         )
       })
       if (element && element.length > 0)
-        filteredData.value.push({ items: element, hoverStatus: false })
+        filteredData.value.push({ ...items.value[i], items: element, hoverStatus: false })
     }
     filterItems.value = filteredData.value
   }
@@ -323,9 +327,9 @@ function handleAddItem(itemIconGroupId?: number) {
 </script>
 
 <template>
-  <div class="w-full h-full sun-main">
+  <div class="sun-main usagi-page">
     <div
-      class="cover wallpaper" :style="{
+      v-if="panelState.panelConfig.backgroundImageSrc" class="cover wallpaper" :style="{
         filter: `blur(${panelState.panelConfig.backgroundBlur}px)`,
         background: `url(${panelState.panelConfig.backgroundImageSrc}) no-repeat`,
         backgroundSize: 'cover',
@@ -333,9 +337,9 @@ function handleAddItem(itemIconGroupId?: number) {
       }"
     />
     <div class="mask" :style="{ backgroundColor: `rgba(0,0,0,${panelState.panelConfig.backgroundMaskNumber})` }" />
-    <div ref="scrollContainerRef" class="absolute w-full h-full overflow-auto">
-      <div
-        class="p-2.5 mx-auto"
+    <div class="usagi-content">
+      <main
+        class="usagi-main"
         :style="{
           marginTop: `${panelState.panelConfig.marginTop}%`,
           marginBottom: `${panelState.panelConfig.marginBottom}%`,
@@ -343,24 +347,24 @@ function handleAddItem(itemIconGroupId?: number) {
         }"
       >
         <!-- 头 -->
-        <div class="mx-[auto] w-[80%]">
-          <div class="flex mx-[auto] items-center justify-center text-white">
-            <div class="logo">
-              <span class="text-2xl md:text-6xl font-bold text-shadow">
+        <header class="usagi-header">
+          <div class="usagi-header-title">
+            <div v-if="panelState.panelConfig.logoShow !== false" class="logo">
+              <span class="usagi-brand">
                 {{ panelState.panelConfig.logoText }}
               </span>
             </div>
-            <div class="divider text-base lg:text-2xl mx-[10px]">
+            <div v-if="panelState.panelConfig.clockShow !== false && panelState.panelConfig.logoShow !== false" class="divider text-base lg:text-2xl mx-[10px]">
               |
             </div>
-            <div class="text-shadow">
+            <div v-if="panelState.panelConfig.clockShow !== false" class="text-shadow">
               <Clock :hide-second="!panelState.panelConfig.clockShowSecond" />
             </div>
           </div>
-          <div v-if="panelState.panelConfig.searchBoxShow" class="flex mt-[20px] mx-auto sm:w-full lg:w-[80%]">
-            <SearchBox @itemSearch="itemFrontEndSearch" />
+          <div v-if="panelState.panelConfig.searchBoxShow" class="usagi-search">
+            <SearchBox :background="panelState.panelConfig.searchBoxBackground" :text-color="panelState.panelConfig.searchBoxTextColor" :border-color="panelState.panelConfig.searchBoxBorderColor" @itemSearch="itemFrontEndSearch" />
           </div>
-        </div>
+        </header>
 
         <!-- 应用盒子 -->
         <div :style="{ marginLeft: `${panelState.panelConfig.marginX}px`, marginRight: `${panelState.panelConfig.marginX}px` }">
@@ -380,32 +384,34 @@ function handleAddItem(itemIconGroupId?: number) {
           <!-- 组纵向排列 -->
           <div
             v-for="(itemGroup, itemGroupIndex) in filterItems" :key="itemGroupIndex"
-            class="item-list mt-[50px]"
-            :class="itemGroup.sortStatus ? 'shadow-2xl border shadow-[0_0_30px_10px_rgba(0,0,0,0.3)]  p-[10px] rounded-2xl' : ''"
+            class="item-list"
+            :class="itemGroup.sortStatus ? 'usagi-group-sorting' : ''"
             @mouseenter="handleSetHoverStatus(itemGroupIndex, true)"
             @mouseleave="handleSetHoverStatus(itemGroupIndex, false)"
           >
             <!-- 分组标题 -->
-            <div class="text-white text-xl font-extrabold mb-[20px] ml-[10px] flex items-center">
+            <div class="group-heading">
               <span class="group-title text-shadow">
                 {{ itemGroup.title }}
               </span>
+              <span v-if="itemGroup.items" class="group-count">{{ itemGroup.items.length }}</span>
+              <span v-if="itemGroup.publicVisitHide === 1" class="private-badge">{{ $t('apps.itemGroupManage.hidePublic') }}</span>
               <div
                 v-if="authStore.visitMode === VisitMode.VISIT_MODE_LOGIN"
                 class="group-buttons ml-2 delay-100 transition-opacity flex"
                 :class="itemGroup.hoverStatus ? 'opacity-100' : 'opacity-0'"
               >
                 <span class="mr-2 cursor-pointer" :title="t('common.add')" @click="handleAddItem(itemGroup.id)">
-                  <SvgIcon class="text-white font-xl" icon="typcn:plus" />
+                  <SvgIcon class="usagi-action-icon font-xl" icon="typcn:plus" />
                 </span>
                 <span class="mr-2 cursor-pointer " :title="t('common.sort')" @click="handleSetSortStatus(itemGroupIndex, !itemGroup.sortStatus)">
-                  <SvgIcon class="text-white font-xl" icon="ri:drag-drop-line" />
+                  <SvgIcon class="usagi-action-icon font-xl" icon="ri:drag-drop-line" />
                 </span>
               </div>
             </div>
 
             <!-- 详情图标 -->
-            <div v-if="panelState.panelConfig.iconStyle === PanelPanelConfigStyleEnum.info">
+            <div v-if="resolveGroupCardStyle(itemGroup, panelState.panelConfig).style === PanelPanelConfigStyleEnum.info">
               <div v-if="itemGroup.items">
                 <VueDraggable
                   v-model="itemGroup.items" item-key="sort" :animation="300"
@@ -413,25 +419,25 @@ function handleAddItem(itemIconGroupId?: number) {
                   filter=".not-drag"
                   :disabled="!itemGroup.sortStatus"
                 >
-                  <div v-for="item, index in itemGroup.items" :key="index" :title="item.description" @contextmenu="(e) => handleContextMenu(e, itemGroupIndex, item)">
+                  <div v-for="(item, index) in itemGroup.items" :key="index" :title="item.description" @contextmenu="(e) => handleContextMenu(e, itemGroupIndex, item)">
                     <AppIcon
                       :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
                       :item-info="item"
-                      :icon-text-color="panelState.panelConfig.iconTextColor"
-                      :icon-text-info-hide-description="panelState.panelConfig.iconTextInfoHideDescription || false"
-                      :icon-text-icon-hide-title="panelState.panelConfig.iconTextIconHideTitle || false"
+                      :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
+                      :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
+                      :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
                       :style="0"
                       @click="handleItemClick(itemGroupIndex, item)"
                     />
                   </div>
 
-                  <div v-if="itemGroup.items.length === 0" class="not-drag">
+                  <div v-if="itemGroup.items.length === 0 && authStore.visitMode === VisitMode.VISIT_MODE_LOGIN" class="not-drag">
                     <AppIcon
                       :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
                       :item-info="{ icon: { itemType: 3, text: 'subway:add' }, title: t('common.add'), url: '', openMethod: 0 }"
-                      :icon-text-color="panelState.panelConfig.iconTextColor"
-                      :icon-text-info-hide-description="panelState.panelConfig.iconTextInfoHideDescription || false"
-                      :icon-text-icon-hide-title="panelState.panelConfig.iconTextIconHideTitle || false"
+                      :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
+                      :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
+                      :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
                       :style="0"
                       @click="handleAddItem(itemGroup.id)"
                     />
@@ -441,7 +447,7 @@ function handleAddItem(itemIconGroupId?: number) {
             </div>
 
             <!-- APP图标宫型盒子 -->
-            <div v-if="panelState.panelConfig.iconStyle === PanelPanelConfigStyleEnum.icon">
+            <div v-if="resolveGroupCardStyle(itemGroup, panelState.panelConfig).style === PanelPanelConfigStyleEnum.icon">
               <div v-if="itemGroup.items">
                 <VueDraggable
                   v-model="itemGroup.items" item-key="sort" :animation="300"
@@ -450,39 +456,39 @@ function handleAddItem(itemIconGroupId?: number) {
                   filter=".not-drag"
                   :disabled="!itemGroup.sortStatus"
                 >
-                  <div v-for="item, index in itemGroup.items" :key="index" :title="item.description" @contextmenu="(e) => handleContextMenu(e, itemGroupIndex, item)">
+                  <div v-for="(item, index) in itemGroup.items" :key="index" :title="item.description" @contextmenu="(e) => handleContextMenu(e, itemGroupIndex, item)">
                     <AppIcon
                       :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
                       :item-info="item"
-                      :icon-text-color="panelState.panelConfig.iconTextColor"
-                      :icon-text-info-hide-description="!panelState.panelConfig.iconTextInfoHideDescription"
-                      :icon-text-icon-hide-title="panelState.panelConfig.iconTextIconHideTitle || false"
+                      :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
+                      :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
+                      :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
                       :style="1"
                       @click="handleItemClick(itemGroupIndex, item)"
                     />
                   </div>
 
-                  <div v-if="itemGroup.items.length === 0" class="not-drag">
+                  <div v-if="itemGroup.items.length === 0 && authStore.visitMode === VisitMode.VISIT_MODE_LOGIN" class="not-drag">
                     <AppIcon
                       class="cursor-pointer"
                       :item-info="{ icon: { itemType: 3, text: 'subway:add' }, title: $t('common.add'), url: '', openMethod: 0 }"
-                      :icon-text-color="panelState.panelConfig.iconTextColor"
-                      :icon-text-info-hide-description="!panelState.panelConfig.iconTextInfoHideDescription"
-                      :icon-text-icon-hide-title="panelState.panelConfig.iconTextIconHideTitle || false"
+                      :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
+                      :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
+                      :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
                       :style="1"
                       @click="handleAddItem(itemGroup.id)"
                     />
                   </div>
-                </vuedraggable>
+                </VueDraggable>
               </div>
             </div>
 
             <!-- 编辑栏 -->
             <div v-if="itemGroup.sortStatus" class="flex mt-[10px]">
               <div>
-                <NButton color="#2a2a2a6b" @click="handleSaveSort(itemGroup)">
+                <NButton type="primary" secondary @click="handleSaveSort(itemGroup)">
                   <template #icon>
-                    <SvgIcon class="text-white font-xl" icon="material-symbols:save" />
+                    <SvgIcon class="usagi-action-icon font-xl" icon="material-symbols:save" />
                   </template>
                   <div>
                     {{ $t('common.saveSort') }}
@@ -492,9 +498,10 @@ function handleAddItem(itemIconGroupId?: number) {
             </div>
           </div>
         </div>
-        <div class="mt-5 footer" v-html="panelState.panelConfig.footerHtml" />
-      </div>
+        <div v-if="panelState.panelConfig.footerHtml && !panelState.panelConfig.footerHtml.includes('usagi-footer')" class="custom-footer" v-html="panelState.panelConfig.footerHtml" />
+      </main>
     </div>
+    <UsagiFooter />
 
     <!-- 右键菜单 -->
     <NDropdown
@@ -503,36 +510,36 @@ function handleAddItem(itemIconGroupId?: number) {
     />
 
     <!-- 悬浮按钮 -->
-    <div class="fixed-element shadow-[0_0_10px_2px_rgba(0,0,0,0.2)]">
+    <div class="fixed-element">
       <NButtonGroup vertical>
         <!-- 网络模式切换按钮组 -->
         <NButton
-          v-if="panelState.networkMode === PanelStateNetworkModeEnum.lan && panelState.panelConfig.netModeChangeButtonShow" color="#2a2a2a6b"
+          v-if="panelState.networkMode === PanelStateNetworkModeEnum.lan && panelState.panelConfig.netModeChangeButtonShow" type="primary" secondary
           :title="t('panelHome.changeToWanModel')" @click="handleChangeNetwork(PanelStateNetworkModeEnum.wan)"
         >
           <template #icon>
-            <SvgIcon class="text-white font-xl" icon="material-symbols:lan-outline-rounded" />
+            <SvgIcon class="usagi-action-icon font-xl" icon="material-symbols:lan-outline-rounded" />
           </template>
         </NButton>
 
         <NButton
-          v-if="panelState.networkMode === PanelStateNetworkModeEnum.wan && panelState.panelConfig.netModeChangeButtonShow" color="#2a2a2a6b"
+          v-if="panelState.networkMode === PanelStateNetworkModeEnum.wan && panelState.panelConfig.netModeChangeButtonShow" type="primary" secondary
           :title="t('panelHome.changeToLanModel')" @click="handleChangeNetwork(PanelStateNetworkModeEnum.lan)"
         >
           <template #icon>
-            <SvgIcon class="text-white font-xl" icon="mdi:wan" />
+            <SvgIcon class="usagi-action-icon font-xl" icon="mdi:wan" />
           </template>
         </NButton>
 
-        <NButton v-if="authStore.visitMode === VisitMode.VISIT_MODE_LOGIN" color="#2a2a2a6b" @click="settingModalShow = !settingModalShow">
+        <NButton v-if="authStore.visitMode === VisitMode.VISIT_MODE_LOGIN" type="primary" secondary @click="settingModalShow = !settingModalShow">
           <template #icon>
-            <SvgIcon class="text-white font-xl" icon="majesticons-applications" />
+            <SvgIcon class="usagi-action-icon font-xl" icon="majesticons-applications" />
           </template>
         </NButton>
 
-        <NButton v-if="authStore.visitMode === VisitMode.VISIT_MODE_PUBLIC" color="#2a2a2a6b" :title="$t('panelHome.goToLogin')" @click="router.push('/login')">
+        <NButton v-if="authStore.visitMode === VisitMode.VISIT_MODE_PUBLIC" type="primary" secondary :title="$t('panelHome.goToLogin')" @click="router.push('/login')">
           <template #icon>
-            <SvgIcon class="text-white font-xl" icon="material-symbols:account-circle" />
+            <SvgIcon class="usagi-action-icon font-xl" icon="material-symbols:account-circle" />
           </template>
         </NButton>
       </NButtonGroup>
@@ -542,15 +549,14 @@ function handleAddItem(itemIconGroupId?: number) {
     </div>
 
     <NBackTop
-      :listen-to="() => scrollContainerRef"
-      :right="10"
-      :bottom="10"
+      :right="12"
+      :bottom="194"
       style="background-color:transparent;border: none;box-shadow: none;"
     >
-      <div class="shadow-[0_0_10px_2px_rgba(0,0,0,0.2)]">
-        <NButton color="#2a2a2a6b">
+      <div class="usagi-floating-control">
+        <NButton type="primary" secondary>
           <template #icon>
-            <SvgIcon class="text-white font-xl" icon="icon-park-outline:to-top" />
+            <SvgIcon class="usagi-action-icon font-xl" icon="icon-park-outline:to-top" />
           </template>
         </NButton>
       </div>
@@ -580,7 +586,7 @@ function handleAddItem(itemIconGroupId?: number) {
           <NSkeleton height="180px" width="100%" class="mt-[20px] rounded-lg" />
         </div>
         <iframe
-          v-show="!windowIframeIsLoad" id="windowIframeId" ref="windowIframeRef" :src="windowSrc"
+          v-show="!windowIframeIsLoad" id="windowIframeId" :src="windowSrc"
           class="w-full h-full" frameborder="0" @load="handWindowIframeIdLoad"
         />
       </div>
@@ -588,73 +594,7 @@ function handleAddItem(itemIconGroupId?: number) {
   </div>
 </template>
 
-<style>
-body,
-html {
-  overflow: hidden;
-  background-color: rgb(54, 54, 54);
-}
-</style>
-
 <style scoped>
-.mask {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.sun-main {
-  user-select: none;
-}
-
-.cover {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  /* background: url(@/assets/start_sky.jpg) no-repeat; */
-
-  transform: scale(1.05);
-}
-
-.text-shadow {
-  text-shadow: 2px 2px 50px rgb(0, 0, 0);
-}
-
-.app-icon-text-shadow {
-  text-shadow: 2px 2px 5px rgb(0, 0, 0);
-}
-
-.fixed-element {
-  position: fixed;
-  /* 将元素固定在屏幕上 */
-  right: 10px;
-  /* 距离屏幕顶部的距离 */
-  bottom: 50px;
-  /* 距离屏幕左侧的距离 */
-}
-
-.icon-info-box {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 18px;
-
-}
-
-.icon-small-box {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
-  gap: 18px;
-
-}
-
-@media (max-width: 500px) {
-  .icon-info-box{
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  }
-}
+.mask { width: 100%; height: 100%; }
+.fixed-element { position: fixed; right: 12px; bottom: 112px; }
 </style>

@@ -25,11 +25,9 @@ func PublicModeInterceptor(c *gin.Context) {
 		if ok && token != "" {
 			// 直接返回缓存的用户信息
 			if userInfo, success := global.UserToken.Get(token); success {
-				global.Logger.Debug("缓存的用户TOKEN:", token)
 				c.Set("userInfo", userInfo)
 				return
 			} else {
-				global.Logger.Debug("数据库查询TOKEN:", token)
 				mUser := models.User{}
 				// 去库中查询是否存在该用户
 				if info, err := mUser.GetUserInfoByToken(token); err == nil && info.Token != "" && info.ID != 0 {
@@ -40,7 +38,6 @@ func PublicModeInterceptor(c *gin.Context) {
 					c.Set("userInfo", info)
 					return
 				} else {
-					global.Logger.Debug("数据库查询用户失败", token)
 				}
 			}
 		} else {
@@ -59,13 +56,11 @@ func PublicModeInterceptor(c *gin.Context) {
 			c.Abort()
 			return
 		}
-		global.Logger.Debug("访客用户TOKEN:", token)
 		global.Logger.Debug("访客用户ID:", userInfo.ID)
 		c.Set("userInfo", userInfo)
 		c.Set(base.GIN_GET_VISIT_MODE, base.VISIT_MODE_PUBLIC)
 		return
 	} else {
-		global.Logger.Debug("访客用户不存在:", userId, " ", token)
 		apiReturn.ErrorCode(c, 1001, global.Lang.Get("login.err_token_expire"), nil)
 		c.Abort()
 		return

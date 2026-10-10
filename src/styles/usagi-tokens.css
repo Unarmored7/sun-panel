@@ -1,0 +1,46 @@
+/**
+ * Usagi Nest (乌萨奇巢穴) - 官方 Design Tokens
+ * 适用于全站各服务 (Files, BBS, Blog, Nav, 及后续新项目)
+ */
+
+:root {
+  /* ================= 1. 色彩体系 (Colors) ================= */
+  /* 背景基底色 */
+  --usagi-bg-base: #FAF2E6;          /* 全局奶油米黄大背景 */
+  --usagi-bg-card: #FFFFFF;          /* 白色卡片与容器 */
+  --usagi-bg-alt: #FFFDF9;           /* 斑马纹/浅层交替底色 */
+  --usagi-bg-hover: rgba(255, 183, 206, 0.08); /* 列表行悬浮高亮 */
+
+  /* 品牌兔兔粉 (Usagi Pink Accent) */
+  --usagi-pink-primary: #FFB7CE;     /* 乌萨奇核心标志粉 (选中、高亮、装饰) */
+  --usagi-pink-hover: #F28BB6;       /* 交互悬浮高亮粉 */
+  --usagi-pink-dark: #C2597F;        /* 交互深粉/链接/主图标 */
+  --usagi-pink-deep: #9A284E;        /* 行内代码文字/深度强调 */
+  --usagi-pink-wash: rgba(255, 183, 206, 0.18); /* 半透明粉底 (Badge/行内代码底色) */
+
+  /* 大地暖棕色 (Usagi Earth Brown) */
+  --usagi-brown-footer: #8A7A6A;     /* 通栏沉底页脚背景/强调标号 */
+  --usagi-brown-text: #FFF2D5;       /* 页脚文字暖奶白 */
+  --usagi-brown-mute: rgba(255, 242, 213, 0.82); /* 页脚版权与次要文字 */
+  --usagi-brown-border: #E3D8C8;     /* 卡片外框/表格外框/主边框 */
+  --usagi-brown-border-subtle: rgba(227, 216, 200, 0.65); /* 浅淡次级分割线 */
+
+  /* 正文与排版文字色 */
+  --usagi-text-main: #3A3131;        /* 正文主色 (温和深棕灰，替代刺眼纯黑) */
+  --usagi-text-muted: rgba(58, 49, 49, 0.65); /* 次级辅助文字/时间戳/文件大小 */
+
+  /* ================= 2. 字体栈 (Typography) ================= */
+  --usagi-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Sarasa UI SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --usagi-font-mono: ui-monospace, SFMono-Regular, "Cascadia Code", "Roboto Mono", "Sarasa Mono SC", Menlo, Consolas, monospace;
+
+  /* ================= 3. 圆角规范 (Border Radius) ================= */
+  --usagi-radius-sm: 4px;            /* 小徽章/小指示器 */
+  --usagi-radius-md: 6px;            /* 按钮/输入框 */
+  --usagi-radius-lg: 10px;           /* 内容卡片/表格外框/工具栏 */
+  --usagi-radius-pill: 9999px;       /* 胶囊丸状标签 */
+
+  /* ================= 4. 阴影规范 (Shadows) ================= */
+  --usagi-shadow-card: 0 4px 16px rgba(138, 122, 106, 0.10);  /* 默认卡片柔和微阴影 */
+  --usagi-shadow-hover: 0 8px 24px rgba(138, 122, 106, 0.16); /* 悬浮态深阴影 */
+  --usagi-shadow-sm: 0 2px 10px rgba(138, 122, 106, 0.04);    /* 轻微浮层 */
+}

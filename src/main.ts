@@ -4,11 +4,12 @@ import { setupI18n } from './locales'
 import { setupAssets, setupScrollbarStyle } from './plugins'
 import { setupStore } from './store'
 import { setupRouter } from './router'
-import 'virtual:svg-icons-register' // svg图标注册
+import { setupSvgIcons } from './plugins/svg-icons'
 
 async function bootstrap() {
   const app = createApp(App)
   setupAssets()
+  setupSvgIcons()
 
   setupScrollbarStyle()
 

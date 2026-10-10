@@ -1,14 +1,18 @@
-version: "3.2"
-
+# Default to the isolated local development instance.
 services:
-  sun-panel:
-    image: 'hslr/sun-panel:latest'
-    container_name: sun-panel
-    volumes:
-    - ./conf:/app/conf
-    - ./uploads:/app/uploads
-    - ./database:/app/database
-    # - ./runtime:/app/runtime
+  sun-panel-dev:
+    build:
+      context: .
+    image: usagi/sun-panel:dev
+    container_name: sun-panel-dev
+    restart: unless-stopped
     ports:
-    - 3002:3002
-    restart: always
+      - "127.0.0.1:3003:3002"
+    volumes:
+      - ./conf:/app/conf
+      - ./conf/uploads:/app/uploads
+      - ./conf/database:/app/database
+      - ./conf/custom:/app/web/custom
+      - ./conf/favicon.ico:/app/web/favicon.ico:ro
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"

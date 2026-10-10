@@ -11,11 +11,12 @@ import SvgSrcBing from '@/assets/search_engine_svg/bing.svg'
 import SvgSrcGoogle from '@/assets/search_engine_svg/google.svg'
 
 withDefaults(defineProps<{
+  borderColor?: string
   background?: string
   textColor?: string
 }>(), {
-  background: '#2a2a2a6b',
-  textColor: 'white',
+  background: 'var(--usagi-bg-card)',
+  textColor: 'var(--usagi-text-main)',
 })
 
 const emits = defineEmits(['itemSearch'])
@@ -52,7 +53,7 @@ const defaultSearchEngineList = ref<DeskModule.SearchBox.SearchEngine[]>([
 
 const defaultState: State = {
   currentSearchEngine: defaultSearchEngineList.value[0],
-  searchEngineList: [] || defaultSearchEngineList,
+  searchEngineList: [...defaultSearchEngineList.value],
   newWindowOpen: false,
 }
 
@@ -121,7 +122,7 @@ onMounted(() => {
 
 <template>
   <div class="search-box w-full" @keydown.enter="handleSearchClick" @keydown.esc="handleClearSearchTerm">
-    <div class="search-container flex rounded-2xl items-center justify-center text-white w-full" :style="{ background, color: textColor }" :class="{ focused: isFocused }">
+    <div class="search-container flex rounded-2xl items-center justify-center text-white w-full" :style="{ background, color: textColor, borderColor }" :class="{ focused: isFocused }">
       <div class="search-box-btn-engine w-[40px] flex justify-center cursor-pointer" @click="handleEngineClick">
         <NAvatar :src="state.currentSearchEngine.iconSrc" style="background-color: transparent;" :size="20" />
       </div>

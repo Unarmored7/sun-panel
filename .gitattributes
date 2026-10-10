@@ -1,3 +1,4 @@
+* text=auto
 "*.vue"    eol=lf
 "*.js"     eol=lf
 "*.ts"     eol=lf
@@ -15,3 +16,15 @@
 "*.sass"   eol=lf
 "*.styl"   eol=lf
 "*.md"     eol=lf
+
+*.go eol=lf
+*.mod eol=lf
+*.sum eol=lf
+*.yml eol=lf
+*.yaml eol=lf
+*.sh eol=lf
+*.py eol=lf
+Dockerfile eol=lf
+*.ps1 eol=crlf
+*.cmd eol=crlf
+*.bat eol=crlf

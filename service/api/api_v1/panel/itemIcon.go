@@ -40,7 +40,13 @@ func (a *ItemIcon) Edit(c *gin.Context) {
 		return
 	}
 
+	var group models.ItemIconGroup
+	if err := global.Db.Where("id=? AND user_id=?", req.ItemIconGroupId, userInfo.ID).First(&group).Error; err != nil {
+		apiReturn.ErrorCode(c, 1005, "Group is not available", nil)
+		return
+	}
 	req.UserId = userInfo.ID
+	req.User = models.User{}
 
 	// json转字符串
 	if j, err := json.Marshal(req.Icon); err == nil {
@@ -53,13 +59,24 @@ func (a *ItemIcon) Edit(c *gin.Context) {
 		if req.Sort != 0 {
 			updateField = append(updateField, "Sort")
 		}
-		global.Db.Model(&models.ItemIcon{}).
+		result := global.Db.Model(&models.ItemIcon{}).
 			Select(updateField).
-			Where("id=?", req.ID).Updates(&req)
+			Where("id=? AND user_id=?", req.ID, userInfo.ID).Updates(&req)
+		if result.Error != nil {
+			apiReturn.ErrorDatabase(c, result.Error.Error())
+			return
+		}
+		if result.RowsAffected == 0 {
+			apiReturn.ErrorCode(c, 1005, "Card is not available", nil)
+			return
+		}
 	} else {
 		req.Sort = 9999
 		// 创建
-		global.Db.Create(&req)
+		if err := global.Db.Create(&req).Error; err != nil {
+			apiReturn.ErrorDatabase(c, err.Error())
+			return
+		}
 	}
 
 	apiReturn.SuccessData(c, req)
@@ -81,14 +98,27 @@ func (a *ItemIcon) AddMultiple(c *gin.Context) {
 			apiReturn.ErrorParamFomat(c, "Group is mandatory")
 			return
 		}
+		if req[i].ID != 0 {
+			apiReturn.ErrorCode(c, -1, "New cards cannot specify an ID", nil)
+			return
+		}
+		var group models.ItemIconGroup
+		if err := global.Db.Where("id=? AND user_id=?", req[i].ItemIconGroupId, userInfo.ID).First(&group).Error; err != nil {
+			apiReturn.ErrorCode(c, 1005, "Group is not available", nil)
+			return
+		}
 		req[i].UserId = userInfo.ID
+		req[i].User = models.User{}
 		// json转字符串
 		if j, err := json.Marshal(req[i].Icon); err == nil {
 			req[i].IconJson = string(j)
 		}
 	}
 
-	global.Db.Create(&req)
+	if err := global.Db.Create(&req).Error; err != nil {
+		apiReturn.ErrorDatabase(c, err.Error())
+		return
+	}
 
 	apiReturn.SuccessData(c, req)
 }
@@ -132,6 +162,15 @@ func (a *ItemIcon) GetListByGroupId(c *gin.Context) {
 	}
 
 	userInfo, _ := base.GetCurrentUserInfo(c)
+	var group models.ItemIconGroup
+	query := global.Db.Where("id=? AND user_id=?", req.ItemIconGroupId, userInfo.ID)
+	if base.GetCurrentVisitMode(c) == base.VISIT_MODE_PUBLIC {
+		query = query.Where("public_visit_hide=0 OR public_visit_hide IS NULL")
+	}
+	if err := query.First(&group).Error; err != nil {
+		apiReturn.ErrorCode(c, 1005, "Group is not available", nil)
+		return
+	}
 	itemIcons := []models.ItemIcon{}
 
 	if err := global.Db.Order("sort ,created_at").Find(&itemIcons, "item_icon_group_id = ? AND user_id=?", req.ItemIconGroupId, userInfo.ID).Error; err != nil {

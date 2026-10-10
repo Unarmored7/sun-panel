@@ -1,30 +1,27 @@
 import { ss } from '@/utils/storage'
 import { PanelPanelConfigStyleEnum, PanelStateNetworkModeEnum } from '@/enums'
-import defaultBackground from '@/assets/defaultBackground.webp'
 const LOCAL_NAME = 'panelStorage'
-
-const defaultFooterHtml = '<div class="flex justify-center text-slate-300" style="margin-top:100px">Powered By <a href="https://github.com/hslr-s/sun-panel" target="_blank" class="ml-[5px]">Sun-Panel</a></div>'
 
 export function defaultStatePanelConfig(): Panel.panelConfig {
   return {
-    backgroundImageSrc: defaultBackground,
+    backgroundImageSrc: '',
     backgroundBlur: 0,
     backgroundMaskNumber: 0,
     iconStyle: PanelPanelConfigStyleEnum.icon,
-    iconTextColor: '#ffffff',
+    iconTextColor: '#3A3131',
     iconTextInfoHideDescription: false,
     iconTextIconHideTitle: false,
-    logoText: 'Sun-Panel',
+    logoText: '乌萨奇导航',
     logoImageSrc: '',
     clockShowSecond: false,
     searchBoxShow: false,
     searchBoxSearchIcon: false,
-    marginBottom: 10,
-    marginTop: 10,
+    marginBottom: 0,
+    marginTop: 0,
     maxWidth: 1200,
     maxWidthUnit: 'px',
     marginX: 5,
-    footerHtml: defaultFooterHtml,
+    footerHtml: '',
     systemMonitorShow: false,
     systemMonitorShowTitle: true,
     systemMonitorPublicVisitModeShow: false,

@@ -1,17 +1,36 @@
 <script setup lang="ts">
-import { computed, ref, watch, withDefaults } from 'vue'
-import { SvgIconOnline } from '@/components/common'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch, withDefaults } from 'vue'
+import { loadNearViewport } from '@/utils/imageVisibility'
 
 interface Prop {
   fallbackText?: string
   itemIcon?: Panel.ItemIcon | null
   size?: number // 默认70
+  eager?: boolean
   forceBackground?: string // 强制背景色
 }
 
 const props = withDefaults(defineProps<Prop>(), { size: 70 })
+const SvgIconOnline = defineAsyncComponent(() => import('../SvgIconOnline/index.vue'))
 const imageFailed = ref(false)
 const imageReady = ref(false)
+const root = ref<HTMLElement>()
+const shouldLoad = ref(props.eager || false)
+const useOriginal = ref(false)
+const imageSource = computed(() => !useOriginal.value && props.itemIcon?.cachedSrc ? props.itemIcon.cachedSrc : props.itemIcon?.src)
+let stopObserving = () => {}
+onMounted(() => {
+  if (root.value && !shouldLoad.value)
+    stopObserving = loadNearViewport(root.value, () => { shouldLoad.value = true })
+})
+onUnmounted(() => stopObserving())
+function handleImageError() {
+  imageReady.value = false
+  if (!useOriginal.value && props.itemIcon?.cachedSrc && props.itemIcon.cachedSrc !== props.itemIcon.src)
+    useOriginal.value = true
+  else
+    imageFailed.value = true
+}
 const configuredBackground = computed(() => {
   const value = props.forceBackground ?? props.itemIcon?.backgroundColor
   return value && value.toLowerCase() !== '#2a2a2a6b' ? value : undefined
@@ -29,15 +48,15 @@ const defaultStyle = computed(() => ({
   color: configuredBackground.value ? 'var(--usagi-pink-deep)' : '#9A284E',
 }))
 const fallback = computed(() => props.fallbackText || props.itemIcon?.text || '↗')
-watch(() => props.itemIcon?.src, () => { imageFailed.value = false; imageReady.value = false })
+watch([() => props.itemIcon?.src, () => props.itemIcon?.cachedSrc], () => { imageFailed.value = false; imageReady.value = false; useOriginal.value = false })
 </script>
 
 <template>
-  <div class="item-icon" :style="defaultStyle">
+  <div ref="root" class="item-icon" :style="defaultStyle">
     <slot>
       <span v-if="itemIcon?.itemType === 1" class="item-icon-text">{{ itemIcon.text || fallback }}</span>
       <template v-else-if="itemIcon?.itemType === 2">
-        <img v-if="!imageFailed && itemIcon.src" :src="itemIcon.src" alt="" loading="lazy" decoding="async" :style="{ opacity: imageReady ? 1 : 0 }" @load="imageReady = true" @error="imageFailed = true; imageReady = false">
+        <img v-if="shouldLoad && !imageFailed && imageSource" :src="imageSource" alt="" :width="size" :height="size" :loading="eager ? 'eager' : 'lazy'" :fetchpriority="eager ? 'high' : 'auto'" decoding="async" :style="{ opacity: imageReady ? 1 : 0 }" @load="imageReady = true" @error="handleImageError">
         <span v-if="!imageReady" class="item-icon-text">{{ fallback }}</span>
       </template>
       <SvgIconOnline v-else-if="itemIcon?.itemType === 3" class="item-icon-symbol" :icon="itemIcon.text" />

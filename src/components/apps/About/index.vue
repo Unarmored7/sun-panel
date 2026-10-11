@@ -10,7 +10,7 @@ import srcDocker from '@/assets/about_image/docker.png'
 import srcBilibili from '@/assets/about_image/bilibili.png'
 import srcYoutube from '@/assets/about_image/youtube.png'
 import srcQQGroupQR from '@/assets/about_image/qq_group_qr2.png'
-import { RoundCardModal } from '@/components/common'
+import RoundCardModal from '@/components/common/RoundCardModal/index.vue'
 
 interface Version {
   versionName: string

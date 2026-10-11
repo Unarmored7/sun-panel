@@ -4,7 +4,7 @@ import { NAlert, NButton, NDataTable, NDropdown, NTag, useDialog, useMessage } f
 import type { DataTableColumns, PaginationProps } from 'naive-ui'
 import EditUser from './EditUser/index.vue'
 import { getPublicVisitUser, setPublicVisitUser, deletes as usersDeletes, getList as usersGetList } from '@/api/panel/users'
-import { SvgIcon } from '@/components/common'
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { useAuthStore } from '@/store'
 import { t } from '@/locales'
 import { AdminAuthRole } from '@/enums/admin'

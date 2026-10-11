@@ -14,7 +14,7 @@ type ItemIconGroup struct {
 	PublicVisitHide int    `gorm:"type:tinyint(1);not null;default:0" json:"publicVisitHide"`
 	CardStyle       string `gorm:"type:text" json:"cardStyle"`
 	UserId          uint   `json:"userId"`
-	User            User   `json:"user"`
+	User            User   `json:"-"`
 }
 
 func (m *ItemIconGroup) DeleteByUserId(db *gorm.DB, userId uint) (err error) {

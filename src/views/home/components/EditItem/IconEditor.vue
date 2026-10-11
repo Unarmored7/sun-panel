@@ -2,7 +2,7 @@
 import { NButton, NColorPicker, NInput, NRadio, NUpload } from 'naive-ui'
 import type { UploadFileInfo } from 'naive-ui'
 import { computed, defineProps } from 'vue'
-import { ItemIcon } from '@/components/common'
+import ItemIcon from '@/components/common/ItemIcon/index.vue'
 import { useAuthStore } from '@/store'
 import { apiRespErrMsg } from '@/utils/request/apiMessage'
 
@@ -52,6 +52,8 @@ function handleIconTypeRadioChange(type: number) {
 }
 
 function handleChange() {
+  if (itemIconInfo.value.src !== props.itemIcon?.src)
+    itemIconInfo.value.cachedSrc = undefined
   emit('update:itemIcon', itemIconInfo.value || null)
 }
 
@@ -71,6 +73,7 @@ const handleUploadFinish = ({
   if (res.code === 0) {
     const imageUrl = res.data.imageUrl
     itemIconInfo.value.src = imageUrl
+    itemIconInfo.value.cachedSrc = undefined
     emit('update:itemIcon', itemIconInfo.value || null)
   }
   else {

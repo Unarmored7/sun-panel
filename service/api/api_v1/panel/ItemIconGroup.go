@@ -2,6 +2,7 @@ package panel
 
 import (
 	"encoding/json"
+	"io"
 	"strings"
 	"sun-panel/api/api_v1/common/apiData/commonApiStructs"
 	"sun-panel/api/api_v1/common/apiReturn"
@@ -89,8 +90,18 @@ func (a *ItemIconGroup) Edit(c *gin.Context) {
 }
 
 func (a *ItemIconGroup) GetList(c *gin.Context) {
+	cardMu.Lock()
+	defer cardMu.Unlock()
+	var req struct {
+		IncludeItems bool `json:"includeItems"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil && err != io.EOF {
+		apiReturn.ErrorCode(c, -1, "Invalid group request", nil)
+		return
+	}
 	userInfo, _ := base.GetCurrentUserInfo(c)
 	groups := []models.ItemIconGroup{}
+	cards := []models.ItemIcon{}
 	public := base.GetCurrentVisitMode(c) == base.VISIT_MODE_PUBLIC
 	err := global.Db.Transaction(func(tx *gorm.DB) error {
 		query := tx.Order("sort,created_at").Where("user_id=?", userInfo.ID)
@@ -112,10 +123,38 @@ func (a *ItemIconGroup) GetList(c *gin.Context) {
 			}
 			groups = append(groups, defaultGroup)
 		}
+		if req.IncludeItems && len(groups) > 0 {
+			ids := make([]uint, len(groups))
+			for i, group := range groups {
+				ids[i] = group.ID
+			}
+			return tx.Order("sort,created_at").Where("user_id=? AND item_icon_group_id IN ?", userInfo.ID, ids).Find(&cards).Error
+		}
 		return nil
 	})
 	if err != nil {
 		apiReturn.ErrorDatabase(c, err.Error())
+		return
+	}
+	if req.IncludeItems {
+		type groupWithItems struct {
+			models.ItemIconGroup
+			Items []models.ItemIcon `json:"items"`
+		}
+		byGroup := map[int][]models.ItemIcon{}
+		for _, card := range cards {
+			readCardIcon(&card)
+			byGroup[card.ItemIconGroupId] = append(byGroup[card.ItemIconGroupId], card)
+		}
+		result := make([]groupWithItems, len(groups))
+		for i, group := range groups {
+			list := byGroup[int(group.ID)]
+			if list == nil {
+				list = []models.ItemIcon{}
+			}
+			result[i] = groupWithItems{group, list}
+		}
+		apiReturn.SuccessListData(c, result, 0)
 		return
 	}
 	apiReturn.SuccessListData(c, groups, 0)
@@ -129,6 +168,13 @@ func (a *ItemIconGroup) Deletes(c *gin.Context) {
 		return
 	}
 	userInfo, _ := base.GetCurrentUserInfo(c)
+	cardMu.Lock()
+	defer cardMu.Unlock()
+	var removed []models.ItemIcon
+	if err := global.Db.Where("user_id=? AND item_icon_group_id IN ?", userInfo.ID, req.Ids).Find(&removed).Error; err != nil {
+		apiReturn.ErrorDatabase(c, err.Error())
+		return
+	}
 
 	var count int64
 	if err := global.Db.Model(&models.ItemIconGroup{}).Where(" user_id=?", userInfo.ID).Count(&count).Error; err != nil {
@@ -165,6 +211,7 @@ func (a *ItemIconGroup) Deletes(c *gin.Context) {
 		return
 	}
 
+	cleanupRemovedIcons(removed)
 	apiReturn.Success(c)
 }
 

@@ -15,6 +15,7 @@ import (
 	"sun-panel/initialize/systemSettingCache"
 	"sun-panel/initialize/userToken"
 	"sun-panel/lib/cmn"
+	"sun-panel/lib/iconcache"
 	"sun-panel/models"
 	"sun-panel/structs"
 	"time"
@@ -58,6 +59,12 @@ func InitApp() error {
 	lang.LangInit("zh-cn") // en-us
 
 	DatabaseConnect()
+	cacheRoot := global.Config.GetValueString("base", "icon_cache_path")
+	if cacheRoot == "" {
+		cacheRoot = "./conf/icon-cache"
+	}
+	iconcache.Default = iconcache.New(cacheRoot, nil)
+	iconcache.Default.StartMaintenance(global.Db)
 
 	// Redis 连接
 	{

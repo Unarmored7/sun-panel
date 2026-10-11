@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { NEllipsis } from 'naive-ui'
-import { ItemIcon } from '@/components/common'
+import ItemIcon from '@/components/common/ItemIcon/index.vue'
 import { PanelPanelConfigStyleEnum } from '@/enums'
 
 interface Prop {
   itemInfo?: Panel.ItemInfo
   size?: number // 默认70
+  eager?: boolean
   forceBackground?: string // 强制背景色
   iconTextColor?: string
   iconTextInfoHideDescription: boolean
@@ -32,7 +33,7 @@ const defaultBackground = 'var(--usagi-bg-card)'
       <!-- 图标 -->
       <div class="app-icon-info-icon w-[56px] h-[76px]">
         <div class="w-[56px] h-full flex items-center justify-center ">
-          <ItemIcon :item-icon="itemInfo?.icon" :size="42" :fallback-text="itemInfo?.title?.slice(0, 2)" />
+          <ItemIcon :item-icon="itemInfo?.icon" :size="42" :eager="eager" :fallback-text="itemInfo?.title?.slice(0, 2)" />
         </div>
       </div>
 
@@ -61,7 +62,7 @@ const defaultBackground = 'var(--usagi-bg-card)'
         :style="{ width: `${size}px`, height: `${size}px` }"
         :title="itemInfo?.description"
       >
-        <ItemIcon :item-icon="itemInfo?.icon" :size="size" :fallback-text="itemInfo?.title?.slice(0, 2)" />
+        <ItemIcon :item-icon="itemInfo?.icon" :size="size" :eager="eager" :fallback-text="itemInfo?.title?.slice(0, 2)" />
       </div>
       <div
         v-if="!iconTextIconHideTitle"

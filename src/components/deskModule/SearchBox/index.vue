@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineEmits, onMounted, ref } from 'vue'
 import { NAvatar, NCheckbox } from 'naive-ui'
-import { SvgIcon } from '@/components/common'
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { useModuleConfig } from '@/store/modules'
 import { useAuthStore } from '@/store'
 import { VisitMode } from '@/enums/auth'

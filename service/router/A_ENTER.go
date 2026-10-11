@@ -2,6 +2,8 @@ package router
 
 import (
 	"sun-panel/global"
+	"sun-panel/lib/iconcache"
+	"sun-panel/lib/webassets"
 	// "sun-panel/router/admin"
 	"sun-panel/router/openness"
 	"sun-panel/router/panel"
@@ -13,6 +15,7 @@ import (
 // 初始化总路由
 func InitRouters(addr string) error {
 	router := gin.Default()
+	router.Use(webassets.Cache("./web"), webassets.JSONCompression())
 	rootRouter := router.Group("/")
 	routerGroup := rootRouter.Group("api")
 
@@ -30,6 +33,9 @@ func InitRouters(addr string) error {
 		router.StaticFile("/favicon.ico", webPath+"/favicon.ico")
 		router.StaticFile("/favicon.svg", webPath+"/favicon.svg")
 	}
+
+	router.GET("/icon-cache/:file", gin.WrapH(iconcache.Default))
+	router.HEAD("/icon-cache/:file", gin.WrapH(iconcache.Default))
 
 	// 上传的文件
 	sourcePath := global.Config.GetValueString("base", "source_path")

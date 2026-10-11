@@ -8,7 +8,7 @@ import Edit from './Edit/index.vue'
 import { deleteByIndex, getAll, saveAll } from './common'
 import { usePanelState } from '@/store'
 import { PanelPanelConfigStyleEnum } from '@/enums'
-import { SvgIcon } from '@/components/common'
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { t } from '@/locales'
 
 interface MonitorGroup extends Panel.ItemIconGroup {

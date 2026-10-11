@@ -3,7 +3,7 @@ import { NButton, NCard, NForm, NFormItem, NInput, NSelect, useMessage } from 'n
 import { ref } from 'vue'
 import { login } from '@/api'
 import { useAppStore, useAuthStore } from '@/store'
-import { SvgIcon } from '@/components/common'
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { router } from '@/router'
 import { t } from '@/locales'
 import UsagiFooter from '@/components/usagi/UsagiFooter.vue'

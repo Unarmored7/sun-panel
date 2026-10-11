@@ -35,7 +35,7 @@
 </template>
   
 <script setup lang="ts">
-import { SvgIcon } from '@/components/common'
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { defineProps } from "vue"
 defineProps<{
     items: Array<any>,

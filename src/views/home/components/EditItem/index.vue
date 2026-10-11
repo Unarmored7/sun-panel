@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineEmits, defineProps, ref, watch } from 'vue'
+import { computed, defineEmits, defineProps, onBeforeUnmount, ref, watch } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
 import { NButton, NForm, NFormItem, NGrid, NGridItem, NInput, NInputGroup, NModal, NSelect, useMessage } from 'naive-ui'
 import IconEditor from './IconEditor.vue'
@@ -97,73 +97,155 @@ async function editApi() {
       ms.error(`${t('common.saveFail')}:${msg}`)
     }
   }
-  catch (error) {
+  catch {
     ms.error(t('common.saveFail'))
   }
   submitLoading.value = false
 }
 
-const handleValidateButtonClick = (e: MouseEvent) => {
-  e.preventDefault()
-  formRef.value?.validate((errors) => {
-    if (!errors)
-      editApi()
-  })
+let lookupTimer: ReturnType<typeof setTimeout> | undefined
+let generation = 0
+let initialURL = ''
+let autoTitle = ''
+let autoDescription = ''
+let autoIcon = ''
+let lookupURL = ''
+let lookupPromise: Promise<void> | undefined
+
+function normalizeURL(raw: string) {
+  const value = raw.trim()
+  if (!value)
+    return ''
+  try {
+    return new URL(value.includes('://') ? value : `https://${value}`).href
+  }
+  catch {
+    return ''
+  }
 }
 
-async function getIconByUrl(url: string, loadingIndex: number) {
-  getIconLoading.value[loadingIndex] = true
-  try {
-    const { code, data } = await getSiteFavicon<{ iconUrl: string }>(url)
-    if (code === 0) {
-      model.value.icon = {
-        itemType: 2,
-        src: data.iconUrl,
+function fillHostname(url: string) {
+  if (!model.value.title || model.value.title === autoTitle) {
+    autoTitle = new URL(url).hostname.replace(/^www\./, '').slice(0, 20)
+    model.value.title = autoTitle
+  }
+}
+
+async function getIconByUrl(raw: string, loadingIndex: number, force = true) {
+  const url = normalizeURL(raw)
+  if (!url)
+    return
+  if (!force && lookupURL === url && lookupPromise)
+    return lookupPromise
+  const currentGeneration = generation
+  const task = async () => {
+    getIconLoading.value[loadingIndex] = true
+    try {
+      const { code, data } = await getSiteFavicon<{ iconUrl: string; originalIconUrl: string; title: string; description: string }>(url)
+      const currentURL = loadingIndex === 0 ? model.value.url : model.value.lanUrl || ''
+      if (!show.value || currentGeneration !== generation || normalizeURL(currentURL) !== url)
+        return
+      if (code === 0) {
+        if (data.title && (!model.value.title || model.value.title === autoTitle)) {
+          autoTitle = [...data.title].slice(0, 20).join('')
+          model.value.title = autoTitle
+        }
+        if (data.description && (!model.value.description || model.value.description === autoDescription)) {
+          autoDescription = [...data.description].slice(0, 100).join('')
+          model.value.description = autoDescription
+        }
+        if (data.iconUrl && (force || !model.value.icon || model.value.icon.src === autoIcon)) {
+          autoIcon = data.originalIconUrl || data.iconUrl
+          model.value.icon = { itemType: 2, src: autoIcon, cachedSrc: data.iconUrl }
+        }
+        else if (force && !data.iconUrl) {
+          ms.warning(t('iconItem.geticonFail'))
+        }
       }
     }
-    else {
-      ms.error(t('iconItem.geticonFail'))
+    finally {
+      if (currentGeneration === generation && normalizeURL(loadingIndex === 0 ? model.value.url || '' : model.value.lanUrl || '') === url)
+        getIconLoading.value[loadingIndex] = false
     }
   }
-  catch (error) {
-    ms.error(t('iconItem.geticonFail'))
+  // Keep a completed lookup reusable across debounce, blur and save.
+  const promise = task().catch(() => {
+    if (force && currentGeneration === generation && show.value)
+      ms.warning(t('iconItem.geticonFail'))
+  })
+  if (loadingIndex === 0) {
+    lookupURL = url
+    lookupPromise = promise
   }
-  getIconLoading.value[loadingIndex] = false
+  return promise
 }
 
 function handleUrlBlur() {
-  const url = model.value.url?.trim()
-  if (!url || !url.startsWith('http'))
+  clearTimeout(lookupTimer)
+  const url = normalizeURL(model.value.url || '')
+  if (!url)
     return
-
-  // Auto-fill title if empty
-  if (!model.value.title) {
-    try {
-      const parsed = new URL(url)
-      const hostname = parsed.hostname.replace(/^www\./, '')
-      const namePart = hostname.split('.')[0]
-      if (namePart)
-        model.value.title = namePart.charAt(0).toUpperCase() + namePart.slice(1)
-    }
-    catch (e) {
-      // ignore
-    }
-  }
-
-  // Auto-fetch icon if not present
-  if (!model.value.icon)
-    getIconByUrl(url, 0)
+  model.value.url = url
+  if (url !== lookupURL || !model.value.title)
+    fillHostname(url)
+  if (url !== initialURL)
+    return getIconByUrl(url, 0, false)
 }
 
-watch(() => props.visible, (newValue) => {
-  if (newValue === true) {
-    model.value = props.itemInfo ? { ...props.itemInfo } : { ...restoreDefault }
+watch(() => model.value.url, (value) => {
+  clearTimeout(lookupTimer)
+  if (!show.value || normalizeURL(value || '') === initialURL || normalizeURL(value || '') === lookupURL)
+    return
+  if (model.value.icon?.src === autoIcon) {
+    model.value.icon = null
+    autoIcon = ''
+  }
+  if (model.value.description === autoDescription) {
+    model.value.description = ''
+    autoDescription = ''
+  }
+  lookupTimer = setTimeout(() => { handleUrlBlur() }, 450)
+})
+
+async function handleValidateButtonClick(e: MouseEvent) {
+  e.preventDefault()
+  if (submitLoading.value)
+    return
+  submitLoading.value = true
+  try {
+    let pendingURL: string
+    do {
+      pendingURL = normalizeURL(model.value.url || '')
+      await handleUrlBlur()
+    } while (pendingURL !== normalizeURL(model.value.url || ''))
+    await formRef.value?.validate()
+    await editApi()
+  }
+  catch {
+    // Form fields explain validation errors inline.
+  }
+  finally {
+    submitLoading.value = false
+  }
+}
+
+watch(() => props.visible, (visible) => {
+  generation++
+  clearTimeout(lookupTimer)
+  lookupURL = ''
+  lookupPromise = undefined
+  autoTitle = autoDescription = autoIcon = ''
+  getIconLoading.value = [false, false]
+  if (visible) {
+    model.value = props.itemInfo ? { ...props.itemInfo, icon: props.itemInfo.icon ? { ...props.itemInfo.icon } : null } : { ...restoreDefault }
+    initialURL = normalizeURL(model.value.url || '')
     if (props.itemGroupId)
       model.value.itemIconGroupId = props.itemGroupId
+    getGroupListOptions()
   }
+}, { immediate: true })
 
-  getGroupListOptions()
-})
+onBeforeUnmount(() => { generation++; clearTimeout(lookupTimer) })
 
 function getGroupListOptions() {
   getGroupList<Common.ListResponse<Panel.ItemIconGroup[]>>().then(({ data, code, msg }) => {
@@ -192,8 +274,19 @@ function getGroupListOptions() {
 
 <template>
   <NModal v-model:show="show" preset="card" size="small" style="width: 600px;border-radius: 1rem;" :title="itemInfo ? t('iconItem.edit') : t('iconItem.add')">
-    <div class="h-[600px] overflow-auto p-[5px]">
+    <div class="max-h-[65vh] overflow-auto p-[5px]">
       <NForm ref="formRef" :model="model" :rules="rules">
+        <NFormItem path="url" :label="$t('iconItem.url')">
+          <NInputGroup>
+            <NInput v-model:value="model.url" type="text" :maxlength="1000" placeholder="输入或粘贴网站网址" @blur="handleUrlBlur" />
+            <NButton :disabled="!model.url" :loading="getIconLoading[0]" @click="getIconByUrl(model.url, 0)">
+              {{ $t('iconItem.getIcon') }}
+            </NButton>
+          </NInputGroup>
+        </NFormItem>
+        <p class="mb-5 text-sm opacity-70">
+          只需输入网址，自动识别名称和图标。重复网址会更新原书签。
+        </p>
         <NGrid cols="2" :x-gap="10" item-responsive>
           <NGridItem span="2 500:1">
             <NFormItem path="itemIconGroupId" :label="t('iconItem.iconGroup')">
@@ -209,15 +302,6 @@ function getGroupListOptions() {
 
         <NFormItem path="icon" :label="$t('common.icon')">
           <IconEditor v-model:item-icon="model.icon" />
-        </NFormItem>
-        <NFormItem path="url" :label="$t('iconItem.url')">
-          <!-- <NSelect :style="{ width: '100px' }" :options="urlProtocolOptions" /> -->
-          <NInputGroup>
-            <NInput v-model:value="model.url" type="text" :maxlength="1000" placeholder="http(s)://" @blur="handleUrlBlur" />
-            <NButton :disabled="!model.url" :loading="getIconLoading[0]" @click="getIconByUrl(model.url, 0)">
-              {{ $t('iconItem.getIcon') }}
-            </NButton>
-          </NInputGroup>
         </NFormItem>
         <NFormItem path="lanUrl" :label="$t('iconItem.lanUrl')">
           <NInputGroup>

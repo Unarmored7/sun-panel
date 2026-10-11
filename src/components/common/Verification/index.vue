@@ -1,7 +1,7 @@
 <script setup lang='ts'>
 import { computed, ref, watch } from 'vue'
 import { NButton, NInput, NModal, useMessage } from 'naive-ui'
-import { Captcha } from '@/components/common'
+import Captcha from '@/components/common/Captcha/index.vue'
 
 const props = defineProps<{
   visible: boolean

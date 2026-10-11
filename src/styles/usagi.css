@@ -5,6 +5,14 @@ button, input, select, textarea { font-family: inherit; }
 .usagi-app { min-height: 100vh; min-height: 100svh; }
 .usagi-page { min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; isolation: isolate; }
 .usagi-content { flex: 1 0 auto; width: 100%; }
+.usagi-loading { width: min(1200px,100%); margin-inline: auto; padding: 36px 24px 44px; min-height: calc(100svh - 100px); }
+.usagi-loading-header, .usagi-loading-search, .usagi-loading-tabs, .usagi-loading-card { background: var(--usagi-pink-wash); border-radius: var(--usagi-radius-lg); }
+.usagi-loading-header { width: min(320px,80%); height: 48px; margin: 0 auto 24px; }
+.usagi-loading-search { max-width: 800px; height: 72px; margin: 0 auto 32px; }
+.usagi-loading-tabs { max-width: 960px; height: 48px; margin: 0 auto 36px; border-radius: var(--usagi-radius-pill); }
+.usagi-loading-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(210px,1fr)); gap: 12px; }
+.usagi-loading-card { height: 80px; }
+.usagi-load-error { padding-top: 120px; text-align: center; }
 .usagi-main { width: 100%; margin-inline: auto; padding: 36px 24px 44px; }
 .usagi-page .cover, .usagi-page .mask { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 .usagi-page .cover { transform: none; }
@@ -154,3 +162,5 @@ button, input, select, textarea { font-family: inherit; }
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6) !important;
   background: var(--usagi-bg-card) !important;
 }
+
+@media (max-width: 640px) { .usagi-loading-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }

@@ -80,12 +80,19 @@ func (a UsersApi) Deletes(c *gin.Context) {
 		return
 	}
 
+	cardMu.Lock()
+	defer cardMu.Unlock()
+	var removed []models.ItemIcon
+	if err := global.Db.Where("user_id IN ?", param.UserIds).Find(&removed).Error; err != nil {
+		apiReturn.ErrorDatabase(c, err.Error())
+		return
+	}
 	txErr := global.Db.Transaction(func(tx *gorm.DB) error {
 		mitemIconGroup := models.ItemIconGroup{}
 
 		for _, v := range param.UserIds {
 			// 删除图标
-			if err := tx.Delete(&models.ItemIcon{}, "user_id=?", v).Error; err != nil {
+			if err := (&models.ItemIcon{}).DeleteByUserId(tx, v); err != nil {
 				return err
 			}
 			// 删除分组
@@ -97,7 +104,7 @@ func (a UsersApi) Deletes(c *gin.Context) {
 				return err
 			}
 			// 删除用户配置
-			if err := tx.Delete(&models.ModuleConfig{}, "user_id=?", v).Error; err != nil {
+			if err := tx.Where("user_id=?", v).Delete(&models.UserConfig{}).Error; err != nil {
 				return err
 			}
 			// // 删除文件记录（不删除资源文件）
@@ -129,6 +136,7 @@ func (a UsersApi) Deletes(c *gin.Context) {
 		return
 	}
 
+	cleanupRemovedIcons(removed)
 	apiReturn.Success(c)
 }
 

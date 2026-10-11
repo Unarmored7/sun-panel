@@ -5,7 +5,8 @@
 // -------------------
 
 import { ref } from 'vue'
-import { ItemCard, SvgIcon } from '@/components/common'
+import ItemCard from '@/components/common/ItemCard/index.vue'
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import type { PanelPanelConfigStyleEnum } from '@/enums'
 
 interface Prop {

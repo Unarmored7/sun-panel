@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { VueDraggable } from 'vue-draggable-plus'
 import { NButton, NDropdown, NModal, NSkeleton, NSpin, useDialog, useMessage } from 'naive-ui'
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { AppIcon, AppStarter, EditItem } from './components'
-import { Clock, SearchBox, SystemMonitor } from '@/components/deskModule'
-import { SvgIcon } from '@/components/common'
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import AppIcon from './components/AppIcon/index.vue'
+import Clock from '@/components/deskModule/Clock/index.vue'
+import SearchBox from '@/components/deskModule/SearchBox/index.vue'
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { deletes, getListByGroupId, saveSort } from '@/api/panel/itemIcon'
 import { getList as getGroupList } from '@/api/panel/itemIconGroup'
 
@@ -18,6 +19,10 @@ import { resolveGroupCardStyle } from '@/utils/groupCardStyle'
 import UsagiFooter from '@/components/usagi/UsagiFooter.vue'
 import UsagiCategoryTabs from '@/components/usagi/UsagiCategoryTabs.vue'
 import UsagiFloatingIsland from '@/components/usagi/UsagiFloatingIsland.vue'
+
+const AppStarter = defineAsyncComponent(() => import('./components/AppStarter/index.vue'))
+const EditItem = defineAsyncComponent(() => import('./components/EditItem/index.vue'))
+const SystemMonitor = defineAsyncComponent(() => import('@/components/deskModule/SystemMonitor/index.vue'))
 
 interface ItemGroup extends Panel.ItemIconGroup {
   sortStatus?: boolean
@@ -46,6 +51,12 @@ const currentRightSelectItem = ref<Panel.ItemInfo | null>(null)
 const currentAddItenIconGroupId = ref<number | undefined>()
 
 const settingModalShow = ref(false)
+const settingsLoaded = ref(false)
+const editorLoaded = ref(false)
+watch(settingModalShow, (visible) => { if (visible) settingsLoaded.value = true })
+watch(editItemInfoShow, (visible) => { if (visible) editorLoaded.value = true })
+const pageLoading = ref(true)
+const loadError = ref(false)
 
 const items = ref<ItemGroup[]>([])
 const filterItems = ref<ItemGroup[]>([])
@@ -149,23 +160,28 @@ function handWindowIframeIdLoad(payload: Event) {
   windowIframeIsLoad.value = false
 }
 
-function getList() {
-  // 获取组数据
-  getGroupList<Common.ListResponse<ItemGroup[]>>().then(({ code, data, msg }) => {
-    if (code !== 0 || !data?.list) {
-      items.value = []
-      filterItems.value = []
-      return
-    }
-    items.value = data.list
-    for (let i = 0; i < data.list.length; i++) {
-      const element = data.list[i]
-      if (element.id)
-        updateItemIconGroupByNet(i, element.id)
-    }
-    filterItems.value = items.value
-    // console.log(items)
-  })
+async function getList() {
+  const { code, data } = await getGroupList<Common.ListResponse<ItemGroup[]>>(true)
+  if (code !== 0 || !data?.list)
+    throw new Error('Navigation could not be loaded')
+  items.value = data.list.map(group => ({ ...group, items: group.items || [], hoverStatus: false }))
+  itemFrontEndSearch(currentSearchKeyword.value)
+}
+
+async function initializePage() {
+  pageLoading.value = true
+  loadError.value = false
+  try {
+    await Promise.all([getList(), panelState.updatePanelConfigByCloud(), updateLocalUserInfo()])
+    if (panelState.panelConfig.logoText)
+      setTitle(panelState.panelConfig.logoText)
+  }
+  catch {
+    loadError.value = true
+  }
+  finally {
+    pageLoading.value = false
+  }
 }
 
 // 从后端获取组下面的图标
@@ -321,16 +337,7 @@ function getDropdownMenuOptions() {
 }
 
 onMounted(() => {
-  // 更新用户信息
-  updateLocalUserInfo()
-  getList()
-
-  // 更新同步云端配置
-  panelState.updatePanelConfigByCloud()
-
-  // 设置标题
-  if (panelState.panelConfig.logoText)
-    setTitle(panelState.panelConfig.logoText)
+  initializePage()
 
   window.addEventListener('scroll', handleScroll, { passive: true })
 })
@@ -409,7 +416,23 @@ function handleAddItem(itemIconGroupId?: number) {
       }"
     />
     <div class="mask" :style="{ backgroundColor: `rgba(0,0,0,${panelState.panelConfig.backgroundMaskNumber})` }" />
-    <div class="usagi-content">
+    <div v-if="pageLoading || loadError" class="usagi-content usagi-loading" :aria-busy="pageLoading">
+      <div v-if="loadError" class="usagi-load-error" role="alert">
+        <p>导航暂时未能加载，请重试。</p>
+        <NButton type="primary" @click="initializePage">
+          重新加载
+        </NButton>
+      </div>
+      <div v-else role="status" aria-label="正在加载导航">
+        <div class="usagi-loading-header" />
+        <div class="usagi-loading-search" />
+        <div class="usagi-loading-tabs" />
+        <div class="usagi-loading-grid">
+          <div v-for="n in 12" :key="n" class="usagi-loading-card" />
+        </div>
+      </div>
+    </div>
+    <div v-else class="usagi-content">
       <main
         class="usagi-main"
         :style="{
@@ -516,6 +539,7 @@ function handleAddItem(itemIconGroupId?: number) {
                     <AppIcon
                       :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
                       :item-info="item"
+                      :eager="itemGroupIndex === 0 && index < 6"
                       :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
                       :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
                       :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
@@ -553,6 +577,7 @@ function handleAddItem(itemIconGroupId?: number) {
                     <AppIcon
                       :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
                       :item-info="item"
+                      :eager="itemGroupIndex === 0 && index < 6"
                       :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
                       :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
                       :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
@@ -594,7 +619,7 @@ function handleAddItem(itemIconGroupId?: number) {
         <div v-if="panelState.panelConfig.footerHtml && !panelState.panelConfig.footerHtml.includes('usagi-footer')" class="custom-footer" v-html="panelState.panelConfig.footerHtml" />
       </main>
     </div>
-    <UsagiFooter />
+    <UsagiFooter v-if="!pageLoading" />
 
     <!-- 右键菜单 -->
     <NDropdown
@@ -614,9 +639,9 @@ function handleAddItem(itemIconGroupId?: number) {
       @scroll-to-top="scrollToTop"
     />
 
-    <AppStarter v-model:visible="settingModalShow" />
+    <AppStarter v-if="settingsLoaded" v-model:visible="settingModalShow" />
 
-    <EditItem v-model:visible="editItemInfoShow" :item-info="editItemInfoData" :item-group-id="currentAddItenIconGroupId" @done="handleEditSuccess" />
+    <EditItem v-if="editorLoaded" v-model:visible="editItemInfoShow" :item-info="editItemInfoData" :item-group-id="currentAddItenIconGroupId" @done="handleEditSuccess" />
 
     <!-- 弹窗 -->
     <NModal

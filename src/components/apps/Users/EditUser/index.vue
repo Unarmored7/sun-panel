@@ -3,7 +3,7 @@ import { computed, defineEmits, defineProps, ref, watch } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
 import { NButton, NForm, NFormItem, NInput, NSelect, useMessage } from 'naive-ui'
 import { edit as userManageEdit } from '@/api/panel/users'
-import { RoundCardModal } from '@/components/common'
+import RoundCardModal from '@/components/common/RoundCardModal/index.vue'
 import { t } from '@/locales'
 
 interface Props {

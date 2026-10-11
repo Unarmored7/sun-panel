@@ -6,7 +6,7 @@ import GenericMonitorCard from '../components/GenericMonitorCard/index.vue'
 import CardCPU from './CPU.vue'
 import Memory from './Memory.vue'
 import Disk from './Disk.vue'
-import { SvgIcon } from '@/components/common'
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { PanelPanelConfigStyleEnum } from '@/enums'
 
 interface Prop {

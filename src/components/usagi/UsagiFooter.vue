@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SvgIcon } from '@/components/common'
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 
 const links = [
   { title: '导航', href: 'https://nav.usaginest.com', icon: 'lucide:compass', active: true },

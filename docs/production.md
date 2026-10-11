@@ -2,7 +2,7 @@
 
 2026-10-10，经用户批准，OVH `ovh-ca-32g-01` 上的导航站已从官方闭源镜像切换到本 fork。
 
-2026-10-11 起 ovh-ca-32g-01 改为 Proxmox VE：生产实例在虚拟机 **`ovh-ca-app-01`**（`ssh ovh-ca-app-01`，经 Tailscale 子网路由 10.10.20.11），开发实例在 **`ovh-ca-dev-01`**；目录 `/opt/docker/sun-panel`、`/opt/docker/sun-panel-dev` 不变，由 edge 上的 Caddy 反代 `ovh-ca-app-01:3002`。见 `Code/shell/ovh-pve`。包含 Gemini 的 Usagi UI 提交 `ed8c7c6`，以及 lint、旧搜索引擎资源和深色搜索框配色兼容修复。
+2026-10-11 起 ovh-ca-32g-01 改为 Proxmox VE：生产实例在虚拟机 **`ovh-ca-app-01`**（`ssh ovh-ca-app-01`，经 Tailscale 子网路由 10.10.20.11），开发实例在 **`ovh-ca-dev-01`**；目录 `/opt/docker/sun-panel`、`/opt/docker/sun-panel-dev` 不变，由 edge 上的 Caddy 反代 `ovh-ca-app-01:3002`。见 `Code/shell/ovh-ca-32g-01`。包含 Gemini 的 Usagi UI 提交 `ed8c7c6`，以及 lint、旧搜索引擎资源和深色搜索框配色兼容修复。
 
 - 域名：`https://nav.usaginest.com`；沿用宿主机端口 `3002`。
 - 生产 Compose：`/opt/docker/sun-panel/docker-compose.yaml`；项目名 `sun-panel-usagi`，容器名 `sun-panel`。

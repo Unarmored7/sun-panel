@@ -46,4 +46,6 @@ ssh -N -L 13003:127.0.0.1:3003 YOUR_SSH_HOST
 
 设计常量位于 `src/styles/usagi-tokens.css`，页面布局位于 `src/styles/usagi.css`，跨站链接位于 `src/components/usagi/UsagiFooter.vue`。分组样式解析集中在 `src/utils/groupCardStyle.ts`；不要再修改构建后的 HTML 或用负边距补页脚。
 
+应用图标统一由 `src/components/common/ItemIcon/index.vue` 渲染：使用连续圆角方形遮罩，图片铺满且不额外添加白底、边框或内边距，文字、符号和加载失败的简称使用相同外形。非方形图片按中心裁切，编辑器中明确设置的背景色仍生效；原图片内部自带的白边需要替换素材才能消除。
+
 验收要求见 [docs/usagi.md](docs/usagi.md)。迁移检查与已知限制见 [docs/migration.md](docs/migration.md)。验证记录见 [docs/validation.md](docs/validation.md)。本仓库 CI 只验证源码和构建镜像，不自动发布或切换站点。

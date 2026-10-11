@@ -32,7 +32,7 @@ const defaultBackground = 'var(--usagi-bg-card)'
       <!-- 图标 -->
       <div class="app-icon-info-icon w-[56px] h-[76px]">
         <div class="w-[56px] h-full flex items-center justify-center ">
-          <ItemIcon :item-icon="itemInfo?.icon" force-background="transparent" :size="42" :fallback-text="itemInfo?.title?.slice(0, 2)" class="overflow-hidden rounded-xl" />
+          <ItemIcon :item-icon="itemInfo?.icon" :size="42" :fallback-text="itemInfo?.title?.slice(0, 2)" />
         </div>
       </div>
 
@@ -57,10 +57,11 @@ const defaultBackground = 'var(--usagi-bg-card)'
     <!-- 极简(小)图标（APP） -->
     <div v-if="style === PanelPanelConfigStyleEnum.icon" class="app-icon-small">
       <div
-        class="app-icon-small-icon overflow-hidden w-[70px] h-[70px] mx-auto"
+        class="app-icon-small-icon mx-auto"
+        :style="{ width: `${size}px`, height: `${size}px` }"
         :title="itemInfo?.description"
       >
-        <ItemIcon :item-icon="itemInfo?.icon" :fallback-text="itemInfo?.title?.slice(0, 2)" />
+        <ItemIcon :item-icon="itemInfo?.icon" :size="size" :fallback-text="itemInfo?.title?.slice(0, 2)" />
       </div>
       <div
         v-if="!iconTextIconHideTitle"

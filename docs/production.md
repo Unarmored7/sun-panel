@@ -1,6 +1,8 @@
 # 正式部署
 
-2026-10-10，经用户批准，OVH `ovh-ca-32g-01` 上的导航站已从官方闭源镜像切换到本 fork。包含 Gemini 的 Usagi UI 提交 `ed8c7c6`，以及 lint、旧搜索引擎资源和深色搜索框配色兼容修复。
+2026-10-10，经用户批准，OVH `ovh-ca-32g-01` 上的导航站已从官方闭源镜像切换到本 fork。
+
+2026-10-11 起 ovh-ca-32g-01 改为 Proxmox VE：生产实例在虚拟机 **`ovh-ca-app-01`**（`ssh ovh-ca-app-01`，经 Tailscale 子网路由 10.10.20.11），开发实例在 **`ovh-ca-dev-01`**；目录 `/opt/docker/sun-panel`、`/opt/docker/sun-panel-dev` 不变，由 edge 上的 Caddy 反代 `ovh-ca-app-01:3002`。见 `Code/shell/ovh-pve`。包含 Gemini 的 Usagi UI 提交 `ed8c7c6`，以及 lint、旧搜索引擎资源和深色搜索框配色兼容修复。
 
 - 域名：`https://nav.usaginest.com`；沿用宿主机端口 `3002`。
 - 生产 Compose：`/opt/docker/sun-panel/docker-compose.yaml`；项目名 `sun-panel-usagi`，容器名 `sun-panel`。
@@ -22,10 +24,12 @@
 
 `/opt/docker/sun-panel/backups/20261010T164727Z`
 
-其中保留原 Compose、完整 `conf`、镜像 ID、容器信息以及 `rollback.sh`。原容器 `sun-panel-legacy-20261010T164727Z` 已停止并保留，旧镜像也保留了固定标签。
+其中保留原 Compose、完整 `conf`、镜像 ID、容器信息以及 `rollback.sh`。旧镜像 `hslr/sun-panel:latest` 已随迁移加载到 ovh-ca-app-01。
+
+迁移时没有带上旧容器 `sun-panel-legacy-20261010T164727Z`，所以 `rollback.sh`（依赖重命名该容器）已不可用。回滚改为用备份中的原 Compose 重新创建：
 
 ```sh
-ssh ovh-ca-32g-01 'sh /opt/docker/sun-panel/backups/20261010T164727Z/rollback.sh'
+ssh ovh-ca-app-01 'cd /opt/docker/sun-panel && docker compose down && cp backups/20261010T164727Z/docker-compose.yaml docker-compose.yaml && docker compose up -d'
 ```
 
 该回滚恢复切换前的旧站点及原数据；执行前应备份切换后新增的数据。后续更新也应保留当前 Compose 与数据库一致性备份，然后再更新镜像。

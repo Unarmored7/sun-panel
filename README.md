@@ -44,7 +44,7 @@ ssh -N -L 13003:127.0.0.1:3003 YOUR_SSH_HOST
 
 ## UI 维护
 
-设计常量位于 `src/styles/usagi-tokens.css`，页面布局位于 `src/styles/usagi.css`，跨站链接位于 `src/components/usagi/UsagiFooter.vue`。分组样式解析集中在 `src/utils/groupCardStyle.ts`；不要再修改构建后的 HTML 或用负边距补页脚。
+全站统一顶栏位于 `src/components/usagi/UsagiHeader.vue`，与页脚共用暖棕色与跨站链接；站名、时间、登录与管理入口都在顶栏，悬浮按钮只负责回到顶部。界面默认中文，可在个人设置中切换英文。设计常量位于 `src/styles/usagi-tokens.css`，页面布局位于 `src/styles/usagi.css`，跨站链接位于 `src/components/usagi/UsagiFooter.vue`。分组样式解析集中在 `src/utils/groupCardStyle.ts`；不要再修改构建后的 HTML 或用负边距补页脚。
 
 应用图标统一由 `src/components/common/ItemIcon/index.vue` 渲染：使用连续圆角方形遮罩，图片铺满且不额外添加白底、边框或内边距，文字、符号和加载失败的简称使用相同外形。非方形图片按中心裁切，旧数据中设置的背景色仍生效；原图片内部自带的白边需要替换素材才能消除。
 

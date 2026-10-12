@@ -73,9 +73,11 @@ const brandTitle = computed(() => {
           :class="{ 'is-active': link.active }"
           :target="link.active ? undefined : '_blank'"
           rel="noopener noreferrer"
+          :title="link.title"
+          :aria-current="link.active ? 'page' : undefined"
         >
           <SvgIcon :icon="link.icon" class="link-icon" />
-          <span>{{ link.title }}</span>
+          <span class="link-text">{{ link.title }}</span>
         </a>
       </nav>
 
@@ -109,7 +111,7 @@ const brandTitle = computed(() => {
           @click="emit('goLogin')"
         >
           <SvgIcon icon="material-symbols:account-circle" class="btn-icon" />
-          <span class="btn-text">{{ t('panelHome.goToLogin') }}</span>
+          <span class="btn-text">{{ t('login.loginButton') }}</span>
         </button>
       </div>
     </div>
@@ -179,13 +181,9 @@ const brandTitle = computed(() => {
 
 /* 中间导航链接 */
 .header-center {
-  display: none;
+  display: flex;
   align-items: center;
   gap: 6px;
-}
-
-@media (min-width: 768px) {
-  .header-center { display: flex; }
 }
 
 .header-nav-link {
@@ -298,6 +296,13 @@ const brandTitle = computed(() => {
   transform: scale(0.96);
 }
 
+/* 中等宽度：时钟只保留时间，给跨站链接留出空间 */
+@media (max-width: 900px) {
+  .clock-date {
+    display: none;
+  }
+}
+
 /* 移动端适配 */
 @media (max-width: 640px) {
   .usagi-global-header {
@@ -309,8 +314,19 @@ const brandTitle = computed(() => {
   .brand-en,
   .brand-dot,
   .clock-capsule,
-  .manage-btn .btn-text {
+  .manage-btn .btn-text,
+  .link-text {
     display: none;
+  }
+  /* Phones keep the cross-site links as icons. */
+  .header-center {
+    gap: 2px;
+  }
+  .header-nav-link {
+    padding: 7px;
+  }
+  .header-nav-link .link-icon {
+    font-size: 16px;
   }
   .header-btn {
     height: 28px;

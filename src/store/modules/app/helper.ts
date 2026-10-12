@@ -7,20 +7,22 @@ export type Language = 'zh-CN' | 'en-US'
 export interface AppState {
   siderCollapsed: boolean
   language: Language
+  languageVersion?: number
 }
 
-export function defaultSetting(): AppState {
-  const lan = (navigator.language).toLowerCase()
-  let language: Language = 'en-US'
-  if (lan.includes('zh'))
-    language = 'zh-CN'
+// The site is Chinese; English stays available as an explicit choice in settings.
+const LANGUAGE_VERSION = 1
 
-  return { siderCollapsed: false, language }
+export function defaultSetting(): AppState {
+  return { siderCollapsed: false, language: 'zh-CN', languageVersion: LANGUAGE_VERSION }
 }
 
 export function getLocalSetting(): AppState {
   const localSetting: Partial<AppState> | undefined = ss.get(LOCAL_NAME)
-  return { ...defaultSetting(), siderCollapsed: localSetting?.siderCollapsed ?? false, language: localSetting?.language ?? defaultSetting().language }
+  // Older versions stored the browser language automatically; reset that once.
+  if (localSetting?.languageVersion !== LANGUAGE_VERSION)
+    return defaultSetting()
+  return { ...defaultSetting(), siderCollapsed: localSetting.siderCollapsed ?? false, language: localSetting.language ?? 'zh-CN' }
 }
 
 export function setLocalSetting(setting: AppState): void {

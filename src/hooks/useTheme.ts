@@ -1,56 +1,11 @@
 import type { GlobalThemeOverrides } from 'naive-ui'
-import { computed, watch } from 'vue'
-import { darkTheme, useOsTheme } from 'naive-ui'
-import { useAppStore } from '@/store'
+import { computed } from 'vue'
 
+// Naive UI controls read the Usagi design tokens; the site has a single light palette.
 export function useTheme() {
-  const appStore = useAppStore()
-
-  const OsTheme = useOsTheme()
-
-  const isDark = computed(() => {
-    if (appStore.theme === 'auto')
-      return OsTheme.value === 'dark'
-    else
-      return appStore.theme === 'dark'
-  })
-
-  const theme = computed(() => {
-    return isDark.value ? darkTheme : undefined
-  })
-
   const themeOverrides = computed<GlobalThemeOverrides>(() => {
     const tokens = getComputedStyle(document.documentElement)
     const token = (name: string, fallback: string) => tokens.getPropertyValue(name).trim() || fallback
-
-    if (isDark.value) {
-      return {
-        common: {
-          primaryColor: '#FFB7CE',
-          primaryColorHover: '#FFC9DA',
-          primaryColorPressed: '#F28BB6',
-          primaryColorSuppl: '#FFB7CE',
-          bodyColor: '#1E1A18',
-          cardColor: '#282220',
-          modalColor: '#282220',
-          popoverColor: '#332B28',
-          textColorBase: '#F5EBE6',
-          textColor1: '#F5EBE6',
-          textColor2: '#F5EBE6',
-          textColor3: 'rgba(245, 235, 230, 0.65)',
-          borderColor: '#3E3532',
-          borderRadius: token('--usagi-radius-md', '6px'),
-          fontFamily: token('--usagi-font-body', 'sans-serif'),
-          lineHeight: '1.7',
-        },
-        Card: { borderRadius: token('--usagi-radius-lg', '10px'), color: '#282220', borderColor: '#3E3532' },
-        Modal: { color: '#282220' },
-        Popover: { color: '#332B28' },
-        Dropdown: { color: '#282220' },
-        Tooltip: { color: '#332B28' },
-        Button: { borderRadiusMedium: token('--usagi-radius-md', '6px') },
-      }
-    }
 
     return {
       common: {
@@ -76,16 +31,5 @@ export function useTheme() {
     }
   })
 
-  watch(
-    () => isDark.value,
-    (dark) => {
-      if (dark)
-        document.documentElement.classList.add('dark')
-      else
-        document.documentElement.classList.remove('dark')
-    },
-    { immediate: true },
-  )
-
-  return { theme, themeOverrides }
+  return { themeOverrides }
 }

@@ -4,14 +4,13 @@ import NaiveProvider from '@/components/common/NaiveProvider/index.vue'
 import { useTheme } from '@/hooks/useTheme'
 import { useLanguage } from '@/hooks/useLanguage'
 
-const { theme, themeOverrides } = useTheme()
+const { themeOverrides } = useTheme()
 const { language } = useLanguage()
 </script>
 
 <template>
   <NConfigProvider
     class="usagi-app"
-    :theme="theme"
     :theme-overrides="themeOverrides"
     :locale="language"
   >

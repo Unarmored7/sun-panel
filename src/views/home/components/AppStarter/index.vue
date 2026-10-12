@@ -122,7 +122,7 @@ onUnmounted(() => {
     >
       <template #header>
         <div class="flex items-center select-none" @click="collapsed = !collapsed">
-          <div class="text-3xl cursor-pointer text-[#C2597F] dark:text-[#FFB7CE]">
+          <div class="text-3xl cursor-pointer text-[#C2597F]">
             <SvgIcon class=" transition-all duration-500" :icon="collapsed ? 'tabler-layout-sidebar-right-collapse-filled' : 'tabler-layout-sidebar-left-collapse-filled'" />
           </div>
           <div class="ml-2 font-medium">
@@ -143,7 +143,7 @@ onUnmounted(() => {
             >
               <div class="w-full h-full">
                 <div
-                  class="p-[6px] bg-stone-100 dark:bg-stone-900 rounded-2xl overflow-auto"
+                  class="p-[6px] bg-stone-100 rounded-2xl overflow-auto"
                   :style="{
                     width: isSmallScreen ? '100%' : '220px',
                     minWidth: '200px',
@@ -158,8 +158,8 @@ onUnmounted(() => {
                     <div
                       class="p-[10px] rounded-xl mb-[6px] font-medium cursor-pointer flex items-center transition-all duration-200"
                       :class="componentName === item.componentName
-                        ? 'bg-pink-100/80 text-[#C2597F] dark:bg-pink-950/40 dark:text-[#FFB7CE] font-semibold shadow-xs'
-                        : 'bg-white dark:bg-stone-800 text-[var(--usagi-text-main)] hover:bg-pink-50 dark:hover:bg-stone-700'"
+                        ? 'bg-pink-100/80 text-[#C2597F] font-semibold shadow-xs'
+                        : 'bg-white text-[var(--usagi-text-main)] hover:bg-pink-50'"
                     >
                       <div class="flex items-center justify-center">
                         <div class="text-lg">
@@ -190,8 +190,3 @@ onUnmounted(() => {
 }
 </style>
 
-<style>
-.dark .app-starter-modal-content .n-layout{
-    background-color: #2c2c32;
-}
-</style>

@@ -6,7 +6,7 @@
 
 
         <div
-            class="flex items-center cursor-pointer my-[15px] p-[5px] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md">
+            class="flex items-center cursor-pointer my-[15px] p-[5px] hover:bg-slate-100 rounded-md">
 
             <div class="w-[25px]">
                 <span v-if="item.children" class="cursor-pointer">
@@ -15,7 +15,7 @@
                 </span>
             </div>
 
-            <span class="flex items-center mr-[5px] text-slate-400 hover:text-black dark:hover:text-white">
+            <span class="flex items-center mr-[5px] text-slate-400 hover:text-black">
                 {{ item.name }}
                 <!-- <NDropdown trigger="click" :options="item.isTop === 1 ? unSetTopOptions : setTopOptions" size="small"
                 @select="(key: string) => handleClick(key, item.id)">

@@ -125,13 +125,7 @@
       "uploadTime": "上传时间"
     },
     "userInfo": {
-      "appName": "我的信息",
-      "theme": "主题",
-      "themeStyle": {
-        "auto": "跟随系统 ",
-        "dark": "深色 ",
-        "light": "浅色 "
-      }
+      "appName": "我的信息"
     }
   },
   "common": {

@@ -125,13 +125,7 @@
       "uploadTime": "Upload time"
     },
     "userInfo": {
-      "appName": "My Information",
-      "theme": "Theme",
-      "themeStyle": {
-        "auto": "Follow the system ",
-        "dark": "Dark ",
-        "light": "Light "
-      }
+      "appName": "My Information"
     }
   },
   "common": {

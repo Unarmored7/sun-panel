@@ -162,7 +162,7 @@ onMounted(() => {
       </NButton>
     </div>
 
-    <div class=" overflow-auto w-full mt-[20px] bg-stone-100 dark:bg-zinc-900/60 rounded-xl" style="height:calc(100% - 65px)">
+    <div class=" overflow-auto w-full mt-[20px] bg-stone-100 rounded-xl" style="height:calc(100% - 65px)">
       <VueDraggable
         v-model="groups"
         item-key="sort" :animation="300"

@@ -1,5 +1,3 @@
-import type { AxiosProgressEvent, AxiosResponse, GenericAbortSignal } from 'axios'
-import request from './axios'
 import { apiRespErrMsg, message } from './apiMessage'
 import { t } from '@/locales'
 import { useAppStore, useAuthStore } from '@/store'
@@ -11,8 +9,7 @@ export interface HttpOption {
   data?: any
   method?: string
   headers?: any
-  onDownloadProgress?: (progressEvent: AxiosProgressEvent) => void
-  signal?: GenericAbortSignal
+  signal?: AbortSignal
   beforeRequest?: () => void
   afterRequest?: () => void
 }
@@ -25,12 +22,33 @@ export interface Response<T = any> {
   code: number
 }
 
+const baseURL = import.meta.env.VITE_GLOB_API_URL || ''
+
+// A small fetch client: the panel only exchanges JSON with its own server.
+async function request(url: string, method: string, params: Record<string, any>, headers: Record<string, string>, signal?: AbortSignal) {
+  let target = baseURL + url
+  const init: RequestInit = { method, headers: { ...headers }, signal }
+  if (method === 'GET') {
+    const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null).map(([k, v]) => [k, String(v)])).toString()
+    if (query)
+      target += (target.includes('?') ? '&' : '?') + query
+  }
+  else {
+    (init.headers as Record<string, string>)['Content-Type'] = 'application/json'
+    init.body = JSON.stringify(params)
+  }
+  const response = await fetch(target, init)
+  if (response.status !== 200)
+    throw new Error(response.status.toString())
+  return { data: await response.json() }
+}
+
 function http<T = any>(
-  { url, data, method, headers, onDownloadProgress, signal, beforeRequest, afterRequest }: HttpOption,
+  { url, data, method, headers, signal, beforeRequest, afterRequest }: HttpOption,
 ) {
   const authStore = useAuthStore()
   const appStore = useAppStore()
-  const successHandler = (res: AxiosResponse<Response<T>>) => {
+  const successHandler = (res: { data: Response<T> }) => {
     if (res.data.code === 0)
       return res.data
 
@@ -92,21 +110,35 @@ function http<T = any>(
   if (!headers)
     headers = {}
 
-  headers.token = authStore.token
-  headers.lang = appStore.language
-  return method === 'GET'
-    ? request.get(url, { params, signal, onDownloadProgress }).then(successHandler, failHandler)
-    : request.post(url, params, { headers, signal, onDownloadProgress }).then(successHandler, failHandler)
+  if (authStore.token)
+    headers.Authorization = `Bearer ${authStore.token}`
+  if (method !== 'GET') {
+    if (authStore.token)
+      headers.token = authStore.token
+    if (appStore.language)
+      headers.lang = appStore.language
+  }
+  return request(url, method, params, headers, signal).then(successHandler, failHandler)
+}
+
+// Requests started at boot, before the code of the page that needs them has loaded.
+const prefetched = new Map<string, { promise: Promise<Response<any>>; at: number }>()
+const requestKey = (url: string, data: any) => `${url}\0${JSON.stringify(data ?? {})}`
+
+export function prefetch(url: string, data?: any) {
+  const promise = http({ url, data, method: 'POST' })
+  // The page that consumes it handles failures; an unused prefetch stays quiet.
+  promise.catch(() => {})
+  prefetched.set(requestKey(url, data), { promise, at: Date.now() })
 }
 
 export function get<T = any>(
-  { url, data, method = 'GET', onDownloadProgress, signal, beforeRequest, afterRequest }: HttpOption,
+  { url, data, method = 'GET', signal, beforeRequest, afterRequest }: HttpOption,
 ): Promise<Response<T>> {
   return http<T>({
     url,
     method,
     data,
-    onDownloadProgress,
     signal,
     beforeRequest,
     afterRequest,
@@ -114,14 +146,20 @@ export function get<T = any>(
 }
 
 export function post<T = any>(
-  { url, data, method = 'POST', headers, onDownloadProgress, signal, beforeRequest, afterRequest }: HttpOption,
+  { url, data, method = 'POST', headers, signal, beforeRequest, afterRequest }: HttpOption,
 ): Promise<Response<T>> {
+  const key = requestKey(url, data)
+  const early = prefetched.get(key)
+  if (early) {
+    prefetched.delete(key)
+    if (Date.now() - early.at < 15000 && !headers && !signal)
+      return early.promise
+  }
   return http<T>({
     url,
     method,
     data,
     headers,
-    onDownloadProgress,
     signal,
     beforeRequest,
     afterRequest,

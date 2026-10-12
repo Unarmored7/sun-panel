@@ -1,27 +1,16 @@
-import { darkTheme, lightTheme } from 'naive-ui'
-
+// naive-ui's light scrollbar tokens, inlined so startup does not import its full theme.
 const setupScrollbarStyle = () => {
   const style = document.createElement('style')
-  const styleContent = `
+  style.innerHTML = `
     ::-webkit-scrollbar {
       background-color: transparent;
-      width: ${lightTheme.Scrollbar.common?.scrollbarWidth};
+      width: 5px;
     }
     ::-webkit-scrollbar-thumb {
-      background-color: ${lightTheme.Scrollbar.common?.scrollbarColor};
-      border-radius: ${lightTheme.Scrollbar.common?.scrollbarBorderRadius};
-    }
-    html.dark ::-webkit-scrollbar {
-      background-color: transparent;
-      width: ${darkTheme.Scrollbar.common?.scrollbarWidth};
-    }
-    html.dark ::-webkit-scrollbar-thumb {
-      background-color: ${darkTheme.Scrollbar.common?.scrollbarColor};
-      border-radius: ${darkTheme.Scrollbar.common?.scrollbarBorderRadius};
+      background-color: rgba(0, 0, 0, 0.25);
+      border-radius: 5px;
     }
   `
-
-  style.innerHTML = styleContent
   document.head.appendChild(style)
 }
 

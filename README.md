@@ -56,4 +56,6 @@ ssh -N -L 13003:127.0.0.1:3003 YOUR_SSH_HOST
 
 首页合并分组与书签读取，页面配置到齐后一次显示，加载和失败重试有明确状态。编辑器、设置、监控组件按需加载，构建预生成 Brotli/Gzip 静态资源，哈希资源长期缓存，API 响应禁止缓存并压缩较大 JSON。
 
+加载性能：首页的三个接口在入口脚本启动时即发出（`src/main.ts` 的 `prefetch`），与页面代码下载并行；`index.html` 预加载首页代码块。首屏先渲染约 36 张卡片，其余分组在下一帧一次性补齐；拖拽排序组件只在进入排序时加载；分组样式按组解析一次；分组悬浮按钮由 CSS 控制，不再触发整页重渲染；详情卡片标题/简介用 CSS 截断而非逐卡 tooltip 组件。入口脚本移除了 axios（改为 fetch）、crypto-js（本地存储不再“加密”）、moment（本地格式化函数）、未使用的 Markdown/KaTeX/代码高亮样式与依赖，SVG 图标精灵改为独立代码块。站点只保留 Usagi 浅色主题，不再提供深色模式。
+
 验收要求见 [docs/usagi.md](docs/usagi.md)。迁移检查与已知限制见 [docs/migration.md](docs/migration.md)。验证记录见 [docs/validation.md](docs/validation.md)。本仓库 CI 只验证源码和构建镜像，不自动发布或切换站点。

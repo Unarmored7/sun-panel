@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { NEllipsis } from 'naive-ui'
 import ItemIcon from '@/components/common/ItemIcon/index.vue'
 import { PanelPanelConfigStyleEnum } from '@/enums'
 
@@ -11,7 +10,7 @@ interface Prop {
   iconTextColor?: string
   iconTextInfoHideDescription: boolean
   iconTextIconHideTitle: boolean
-  style: PanelPanelConfigStyleEnum
+  cardStyle: PanelPanelConfigStyleEnum
 }
 
 withDefaults(defineProps<Prop>(), {
@@ -26,7 +25,7 @@ const defaultBackground = 'var(--usagi-bg-card)'
   <button type="button" class="app-icon w-full" :aria-label="itemInfo?.title">
     <!-- 详情图标 -->
     <div
-      v-if="style === PanelPanelConfigStyleEnum.info"
+      v-if="cardStyle === PanelPanelConfigStyleEnum.info"
       class="app-icon-info w-full flex"
       :style="{ background: forceBackground || defaultBackground }"
     >
@@ -41,22 +40,19 @@ const defaultBackground = 'var(--usagi-bg-card)'
       <!-- The upstream white default becomes readable warm text on the Usagi card. -->
       <div class="app-icon-info-content flex items-center" :style="{ color: (!iconTextColor || iconTextColor === '#ffffff') ? 'var(--usagi-text-main)' : iconTextColor }">
         <div class="app-icon-info-text-box w-full">
-          <div class="app-icon-info-text-box-title font-semibold w-full">
-            <NEllipsis>
-              {{ itemInfo?.title }}
-            </NEllipsis>
+          <!-- CSS truncation: a tooltip component per card is costly on long pages. -->
+          <div class="app-icon-info-text-box-title font-semibold w-full truncate">
+            {{ itemInfo?.title }}
           </div>
-          <div v-if="!iconTextInfoHideDescription" class="app-icon-info-text-box-description">
-            <NEllipsis :line-clamp="2" class="text-xs">
-              {{ itemInfo?.description }}
-            </NEllipsis>
+          <div v-if="!iconTextInfoHideDescription" class="app-icon-info-text-box-description text-xs line-clamp-2">
+            {{ itemInfo?.description }}
           </div>
         </div>
       </div>
     </div>
 
     <!-- 极简(小)图标（APP） -->
-    <div v-if="style === PanelPanelConfigStyleEnum.icon" class="app-icon-small">
+    <div v-if="cardStyle === PanelPanelConfigStyleEnum.icon" class="app-icon-small">
       <div
         class="app-icon-small-icon mx-auto"
         :style="{ width: `${size}px`, height: `${size}px` }"

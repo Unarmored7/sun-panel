@@ -24,6 +24,37 @@ function setupPlugins(env: ImportMetaEnv): PluginOption[] {
         }
       },
     },
+    {
+      // The home page is the landing route: preload its chunks with the entry
+      // instead of waiting for the router to request them.
+      name: 'preload-home-route',
+      apply: 'build',
+      transformIndexHtml: {
+        order: 'post',
+        handler(html, ctx) {
+          const bundle = ctx.bundle
+          if (!bundle)
+            return html
+          const home = Object.values(bundle).find(chunk => chunk.type === 'chunk' && chunk.facadeModuleId?.endsWith('/src/views/home/index.vue'))
+          if (!home || home.type !== 'chunk')
+            return html
+          const files = new Set<string>()
+          const css = new Set<string>()
+          const visit = (name: string) => {
+            const chunk = bundle[name]
+            if (!chunk || chunk.type !== 'chunk' || files.has(name) || chunk.isEntry)
+              return
+            files.add(name)
+            chunk.viteMetadata?.importedCss.forEach(file => css.add(file))
+            chunk.imports.forEach(visit)
+          }
+          visit(home.fileName)
+          const tags = [...files].filter(file => !html.includes(file)).map(file => `<link rel="modulepreload" crossorigin href="/${file}">`)
+            .concat([...css].filter(file => !html.includes(file)).map(file => `<link rel="stylesheet" crossorigin href="/${file}">`))
+          return html.replace('</head>', `  ${tags.join('\n  ')}\n</head>`)
+        },
+      },
+    },
     env.VITE_GLOB_APP_PWA === 'true' && VitePWA({
       injectRegister: 'auto',
       manifest: {

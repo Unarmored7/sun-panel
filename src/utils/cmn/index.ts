@@ -1,4 +1,3 @@
-import moment from 'moment'
 import { h } from 'vue'
 import type { NotificationReactive } from 'naive-ui'
 import { NButton, createDiscreteApi } from 'naive-ui'
@@ -18,14 +17,27 @@ const { notification } = createDiscreteApi(['notification'])
  * @returns string
  */
 export function buildTimeString(format?: string): string {
-  if (!format)
-    format = 'YYYY-MM-DD HH:mm:ss'
+  return formatDate(new Date(), format)
+}
 
-  return moment().format(format)
+/** Formats local time with the YYYY, MM, DD, HH, mm and ss tokens. */
+export function formatDate(date: Date, format = 'YYYY-MM-DD HH:mm:ss'): string {
+  if (Number.isNaN(date.getTime()))
+    return ''
+  const pad = (value: number) => String(value).padStart(2, '0')
+  const parts: Record<string, string> = {
+    YYYY: String(date.getFullYear()),
+    MM: pad(date.getMonth() + 1),
+    DD: pad(date.getDate()),
+    HH: pad(date.getHours()),
+    mm: pad(date.getMinutes()),
+    ss: pad(date.getSeconds()),
+  }
+  return format.replace(/YYYY|MM|DD|HH|mm|ss/g, token => parts[token])
 }
 
 export function timeFormat(timeString?: string) {
-  return moment(timeString).format('YYYY-MM-DD HH:mm:ss')
+  return formatDate(timeString ? new Date(timeString) : new Date())
 }
 
 /**

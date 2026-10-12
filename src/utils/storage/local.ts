@@ -1,17 +1,14 @@
-import { deCrypto, enCrypto } from '../crypto'
-
 interface StorageData<T = any> {
   data: T
   expire: number | null
 }
 
-export function createLocalStorage(options?: { expire?: number | null; crypto?: boolean }) {
+export function createLocalStorage(options?: { expire?: number | null }) {
   const DEFAULT_CACHE_TIME = 60 * 60 * 24 * 7
 
-  const { expire, crypto } = Object.assign(
+  const { expire } = Object.assign(
     {
       expire: DEFAULT_CACHE_TIME,
-      crypto: true,
     },
     options,
   )
@@ -22,7 +19,7 @@ export function createLocalStorage(options?: { expire?: number | null; crypto?: 
       expire: expire !== null ? new Date().getTime() + expire * 1000 : null,
     }
 
-    const json = crypto ? enCrypto(storageData) : JSON.stringify(storageData)
+    const json = JSON.stringify(storageData)
     window.localStorage.setItem(key, json)
   }
 
@@ -32,7 +29,7 @@ export function createLocalStorage(options?: { expire?: number | null; crypto?: 
       let storageData: StorageData | null = null
 
       try {
-        storageData = crypto ? deCrypto(json) : JSON.parse(json)
+        storageData = JSON.parse(json)
       }
       catch {
         // Prevent failure
@@ -65,6 +62,4 @@ export function createLocalStorage(options?: { expire?: number | null; crypto?: 
   }
 }
 
-export const ls = createLocalStorage()
-
-export const ss = createLocalStorage({ expire: null, crypto: false })
+export const ss = createLocalStorage({ expire: null })

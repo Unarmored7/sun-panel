@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { VueDraggable } from 'vue-draggable-plus'
 import { NButton, NDropdown, NModal, NSkeleton, NSpin, useDialog, useMessage } from 'naive-ui'
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from './components/AppIcon/index.vue'
@@ -23,10 +22,11 @@ import UsagiFloatingIsland from '@/components/usagi/UsagiFloatingIsland.vue'
 const AppStarter = defineAsyncComponent(() => import('./components/AppStarter/index.vue'))
 const EditItem = defineAsyncComponent(() => import('./components/EditItem/index.vue'))
 const SystemMonitor = defineAsyncComponent(() => import('@/components/deskModule/SystemMonitor/index.vue'))
+// Drag and drop is only needed while a group is being sorted.
+const VueDraggable = defineAsyncComponent(() => import('vue-draggable-plus').then(module => module.VueDraggable))
 
 interface ItemGroup extends Panel.ItemIconGroup {
   sortStatus?: boolean
-  hoverStatus: boolean
   items?: Panel.ItemInfo[]
 }
 
@@ -64,6 +64,30 @@ const activeGroupId = ref<number | 'all'>('all')
 const currentSearchKeyword = ref<string>('')
 const showBackTop = ref<boolean>(false)
 
+// Long pages paint the first screen of groups, then render the rest in one more pass,
+// so the first screen does not wait for every card (one extra layout, not one per chunk).
+const renderedGroupCount = ref(0)
+let renderFrame = 0
+function renderGroupsProgressively() {
+  cancelAnimationFrame(renderFrame)
+  let end = 0
+  let cards = 0
+  while (end < filterItems.value.length && (end === 0 || cards < 36))
+    cards += filterItems.value[end++].items?.length || 0
+  renderedGroupCount.value = end
+  if (end < filterItems.value.length) {
+    // Two frames: let the first screen paint before the remaining groups render.
+    renderFrame = requestAnimationFrame(() => {
+      renderFrame = requestAnimationFrame(() => { renderedGroupCount.value = filterItems.value.length })
+    })
+  }
+}
+watch(filterItems, renderGroupsProgressively)
+const visibleGroups = computed(() => filterItems.value.slice(0, renderedGroupCount.value))
+
+// Each group's card style is parsed once per change, not for every card render.
+const groupCardStyles = computed(() => filterItems.value.map(group => resolveGroupCardStyle(group, panelState.panelConfig)))
+
 const totalBookmarkCount = computed(() => {
   return items.value.reduce((acc, g) => acc + (g.items?.length || 0), 0)
 })
@@ -81,8 +105,13 @@ const filteredMatchCount = computed(() => {
   return filterItems.value.reduce((acc, g) => acc + (g.items?.length || 0), 0)
 })
 
-function handleCategorySelect(id: number | 'all') {
+async function handleCategorySelect(id: number | 'all') {
   activeGroupId.value = id
+  if (renderedGroupCount.value < filterItems.value.length) {
+    cancelAnimationFrame(renderFrame)
+    renderedGroupCount.value = filterItems.value.length
+    await nextTick()
+  }
   if (id === 'all') {
     window.scrollTo({ top: 0, behavior: 'smooth' })
     return
@@ -98,7 +127,14 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+let scrollFrame = 0
 function handleScroll() {
+  if (!scrollFrame)
+    scrollFrame = requestAnimationFrame(updateScrollState)
+}
+
+function updateScrollState() {
+  scrollFrame = 0
   const scrollY = window.pageYOffset || document.documentElement.scrollTop
   showBackTop.value = scrollY > 260
 
@@ -157,7 +193,7 @@ async function getList() {
   const { code, data } = await getGroupList<Common.ListResponse<ItemGroup[]>>(true)
   if (code !== 0 || !data?.list)
     throw new Error('Navigation could not be loaded')
-  items.value = data.list.map(group => ({ ...group, items: group.items || [], hoverStatus: false }))
+  items.value = data.list.map(group => ({ ...group, items: group.items || [] }))
   itemFrontEndSearch(currentSearchKeyword.value)
 }
 
@@ -303,6 +339,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
+  cancelAnimationFrame(scrollFrame)
+  cancelAnimationFrame(renderFrame)
 })
 
 // 前端搜索过滤
@@ -320,7 +358,7 @@ function itemFrontEndSearch(keyword?: string) {
         )
       })
       if (element && element.length > 0)
-        filteredData.push({ ...items.value[i], items: element, hoverStatus: false })
+        filteredData.push({ ...items.value[i], items: element })
     }
     filterItems.value = filteredData
   }
@@ -331,11 +369,6 @@ function itemFrontEndSearch(keyword?: string) {
 
 function handleClearSearch() {
   itemFrontEndSearch('')
-}
-
-function handleSetHoverStatus(groupIndex: number, hoverStatus: boolean) {
-  if (items.value[groupIndex])
-    items.value[groupIndex].hoverStatus = hoverStatus
 }
 
 function handleSetSortStatus(groupIndex: number, sortStatus: boolean) {
@@ -456,13 +489,11 @@ function handleAddItem(itemIconGroupId?: number) {
 
           <!-- 组纵向排列 -->
           <div
-            v-for="(itemGroup, itemGroupIndex) in filterItems"
+            v-for="(itemGroup, itemGroupIndex) in visibleGroups"
             :id="`usagi-group-${itemGroup.id}`"
             :key="itemGroup.id ?? itemGroupIndex"
             class="item-list"
             :class="itemGroup.sortStatus ? 'usagi-group-sorting' : ''"
-            @mouseenter="handleSetHoverStatus(itemGroupIndex, true)"
-            @mouseleave="handleSetHoverStatus(itemGroupIndex, false)"
           >
             <!-- 分组标题 -->
             <div class="group-heading">
@@ -474,7 +505,6 @@ function handleAddItem(itemIconGroupId?: number) {
               <div
                 v-if="authStore.visitMode === VisitMode.VISIT_MODE_LOGIN"
                 class="group-buttons ml-2 delay-100 transition-opacity flex"
-                :class="itemGroup.hoverStatus ? 'opacity-100' : 'opacity-0'"
               >
                 <span class="mr-2 cursor-pointer" :title="t('common.add')" @click="handleAddItem(itemGroup.id)">
                   <SvgIcon class="usagi-action-icon font-xl" icon="typcn:plus" />
@@ -485,80 +515,38 @@ function handleAddItem(itemIconGroupId?: number) {
               </div>
             </div>
 
-            <!-- 详情图标 -->
-            <div v-if="resolveGroupCardStyle(itemGroup, panelState.panelConfig).style === PanelPanelConfigStyleEnum.info">
-              <div v-if="itemGroup.items">
-                <VueDraggable
-                  v-model="itemGroup.items" item-key="sort" :animation="300"
-                  class="icon-info-box"
-                  filter=".not-drag"
-                  :disabled="!itemGroup.sortStatus"
-                >
-                  <div v-for="(item, index) in itemGroup.items" :key="index" :title="item.description" @contextmenu="(e) => handleContextMenu(e, itemGroupIndex, item)">
-                    <AppIcon
-                      :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
-                      :item-info="item"
-                      :eager="itemGroupIndex === 0 && index < 6"
-                      :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
-                      :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
-                      :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
-                      :style="0"
-                      @click="handleItemClick(itemGroupIndex, item)"
-                    />
-                  </div>
-
-                  <div v-if="itemGroup.items.length === 0 && authStore.visitMode === VisitMode.VISIT_MODE_LOGIN" class="not-drag">
-                    <AppIcon
-                      :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
-                      :item-info="{ icon: { itemType: 3, text: 'subway:add' }, title: t('common.add'), url: '', openMethod: 0 }"
-                      :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
-                      :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
-                      :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
-                      :style="0"
-                      @click="handleAddItem(itemGroup.id)"
-                    />
-                  </div>
-                </VueDraggable>
+            <!-- 卡片：详情（info）或图标（icon）样式；仅在排序时挂载拖拽 -->
+            <component
+              :is="itemGroup.sortStatus ? VueDraggable : 'div'"
+              v-if="itemGroup.items"
+              v-bind="itemGroup.sortStatus ? { 'modelValue': itemGroup.items, 'onUpdate:modelValue': (value: Panel.ItemInfo[]) => { itemGroup.items = value }, 'animation': 300, 'filter': '.not-drag' } : {}"
+              :class="groupCardStyles[itemGroupIndex].style === PanelPanelConfigStyleEnum.info ? 'icon-info-box' : 'icon-small-box'"
+            >
+              <div v-for="(item, index) in itemGroup.items" :key="index" :title="item.description" @contextmenu="(e) => handleContextMenu(e, itemGroupIndex, item)">
+                <AppIcon
+                  :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
+                  :item-info="item"
+                  :eager="itemGroupIndex === 0 && index < 6"
+                  :icon-text-color="groupCardStyles[itemGroupIndex].textColor"
+                  :icon-text-info-hide-description="groupCardStyles[itemGroupIndex].hideDescription"
+                  :icon-text-icon-hide-title="groupCardStyles[itemGroupIndex].hideTitle"
+                  :card-style="groupCardStyles[itemGroupIndex].style"
+                  @click="handleItemClick(itemGroupIndex, item)"
+                />
               </div>
-            </div>
 
-            <!-- APP图标宫型盒子 -->
-            <div v-if="resolveGroupCardStyle(itemGroup, panelState.panelConfig).style === PanelPanelConfigStyleEnum.icon">
-              <div v-if="itemGroup.items">
-                <VueDraggable
-                  v-model="itemGroup.items" item-key="sort" :animation="300"
-                  class="icon-small-box"
-
-                  filter=".not-drag"
-                  :disabled="!itemGroup.sortStatus"
-                >
-                  <div v-for="(item, index) in itemGroup.items" :key="index" :title="item.description" @contextmenu="(e) => handleContextMenu(e, itemGroupIndex, item)">
-                    <AppIcon
-                      :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
-                      :item-info="item"
-                      :eager="itemGroupIndex === 0 && index < 6"
-                      :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
-                      :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
-                      :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
-                      :style="1"
-                      @click="handleItemClick(itemGroupIndex, item)"
-                    />
-                  </div>
-
-                  <div v-if="itemGroup.items.length === 0 && authStore.visitMode === VisitMode.VISIT_MODE_LOGIN" class="not-drag">
-                    <AppIcon
-                      class="cursor-pointer"
-                      :item-info="{ icon: { itemType: 3, text: 'subway:add' }, title: $t('common.add'), url: '', openMethod: 0 }"
-                      :icon-text-color="resolveGroupCardStyle(itemGroup, panelState.panelConfig).textColor"
-                      :icon-text-info-hide-description="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideDescription"
-                      :icon-text-icon-hide-title="resolveGroupCardStyle(itemGroup, panelState.panelConfig).hideTitle"
-                      :style="1"
-                      @click="handleAddItem(itemGroup.id)"
-                    />
-                  </div>
-                </VueDraggable>
+              <div v-if="itemGroup.items.length === 0 && authStore.visitMode === VisitMode.VISIT_MODE_LOGIN" class="not-drag">
+                <AppIcon
+                  class="cursor-pointer"
+                  :item-info="{ icon: { itemType: 3, text: 'subway:add' }, title: t('common.add'), url: '', openMethod: 0 }"
+                  :icon-text-color="groupCardStyles[itemGroupIndex].textColor"
+                  :icon-text-info-hide-description="groupCardStyles[itemGroupIndex].hideDescription"
+                  :icon-text-icon-hide-title="groupCardStyles[itemGroupIndex].hideTitle"
+                  :card-style="groupCardStyles[itemGroupIndex].style"
+                  @click="handleAddItem(itemGroup.id)"
+                />
               </div>
-            </div>
+            </component>
 
             <!-- 编辑栏 -->
             <div v-if="itemGroup.sortStatus" class="flex mt-[10px]">
@@ -614,7 +602,7 @@ function handleAddItem(itemIconGroupId?: number) {
           <NSpin v-if="windowIframeIsLoad" size="small" />
         </div>
       </template>
-      <div class="w-full h-full rounded-2xl overflow-hidden border dark:border-zinc-700">
+      <div class="w-full h-full rounded-2xl overflow-hidden border">
         <div v-if="windowIframeIsLoad" class="flex flex-col p-5">
           <NSkeleton height="50px" width="100%" class="rounded-lg" />
           <NSkeleton height="180px" width="100%" class="mt-[20px] rounded-lg" />

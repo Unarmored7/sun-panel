@@ -1,5 +1,5 @@
-import CryptoJS from 'crypto-js'
-import moment from 'moment'
+import MD5 from 'crypto-js/md5'
+import { formatDate } from '@/utils/cmn'
 
 const VERSION = 1 // 当前配置文件版本
 const ALLOW_LOW_VERSION = 1 // 最小支持的配置文件版本号
@@ -59,7 +59,7 @@ export function exportJson(appVersion?: string): ExportJsonResult {
   const jsonData: JsonStructure = {
     version: VERSION,
     appName: APPNAME,
-    exportTime: moment().format('YYYY-MM-DD HH:mm:ss'),
+    exportTime: formatDate(new Date()),
     appVersion: appVersion || '',
     md5: '',
   }
@@ -84,7 +84,7 @@ export function exportJson(appVersion?: string): ExportJsonResult {
         const blob = new Blob([jsonString], { type: 'application/json' })
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = `SunPanel-Data${moment().format('YYYYMMDDHHmm')}.sun-panel.json`
+        link.download = `SunPanel-Data${formatDate(new Date(), 'YYYYMMDDHHmm')}.sun-panel.json`
         link.click()
       }
     },
@@ -168,7 +168,7 @@ function generateMD5(jsonString: string): string {
     // 将修改后的 JSON 对象转换回字符串
     const modifiedJsonString = JSON.stringify(data)
     // 使用 crypto-js 计算 MD5 值
-    const md5 = CryptoJS.MD5(modifiedJsonString).toString()
+    const md5 = MD5(modifiedJsonString).toString()
     return md5
   }
   catch (error) {

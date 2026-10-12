@@ -66,7 +66,6 @@
       "leftRightMargin": "Left-right margin",
       "mask": "Mask",
       "maxWidth": "Max width",
-      "netModeChangeButtonShow": "Show network mode switch button",
       "publicVisitModeShow": "Allow public mode display",
       "resetWarnText": "Are you sure you want to reset these styles?",
       "searchBar": "Search bar component",
@@ -235,8 +234,6 @@
     "iconDetecting": "Detecting site name, description and icon…",
     "iconGroup": "Group",
     "iconMissing": "No icon found; name initials are shown and the server keeps trying after saving",
-    "lanUrl": "LAN URL",
-    "lanUrlInputPlaceholder": "http(s):// (LAN mode, will redirect to this address)",
     "newWindowOpen": "Open in new window",
     "openMethod": "Open method",
     "redetect": "Detect again",
@@ -251,13 +248,7 @@
     "welcomeMessage": "Welcome back!"
   },
   "panelHome": {
-    "changeToLanModel": "Switch to LAN mode",
-    "changeToLanModelSuccess": "Switched to LAN mode (mode status saved locally)",
-    "changeToWanModel": "Switch to WAN mode",
-    "changeToWanModelSuccess": "Switched to WAN mode (mode status saved locally)",
-    "goToLogin": "Go to login",
-    "openLanUrl": "Open LAN URL",
-    "openWanUrl": "Open WAN URL"
+    "goToLogin": "Go to login"
   },
   "settingUserInfo": {
     "confirmLogoutText": "Are you sure you want to logout?",

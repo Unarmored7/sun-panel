@@ -35,7 +35,6 @@ export interface Icon {
   sort: number
   icon: Panel.ItemIcon | null
   url: string
-  lanUrl: string
   description: string
   openMethod: number
 }

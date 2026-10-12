@@ -17,7 +17,7 @@ type ItemIcon struct {
 	Icon            datatype.ItemIconIconInfo `gorm:"-" json:"icon"`
 	Title           string                    `gorm:"type:varchar(50)" json:"title"`
 	Url             string                    `gorm:"type:varchar(1000)" json:"url"`
-	LanUrl          string                    `gorm:"type:varchar(1000)" json:"lanUrl"`
+	LanUrl          string                    `gorm:"type:varchar(1000)" json:"-"` // Retired LAN address, kept in the database only
 	Description     string                    `gorm:"type:varchar(1000)" json:"description"`
 	OpenMethod      int                       `gorm:"type:tinyint(1)" json:"openMethod"`
 	Sort            int                       `gorm:"type:int(11)" json:"sort"`

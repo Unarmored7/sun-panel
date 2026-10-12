@@ -1,21 +1,15 @@
 <script setup lang="ts">
 import { NTooltip } from 'naive-ui'
 import SvgIcon from '@/components/common/SvgIcon/index.vue'
-import { PanelStateNetworkModeEnum } from '@/enums'
 import { VisitMode } from '@/enums/auth'
 import { t } from '@/locales'
 
-withDefaults(defineProps<{
-  networkMode: PanelStateNetworkModeEnum
-  netModeChangeButtonShow?: boolean
+defineProps<{
   visitMode: VisitMode
   showBackTop: boolean
-}>(), {
-  netModeChangeButtonShow: true,
-})
+}>()
 
 const emit = defineEmits<{
-  (e: 'changeNetwork', mode: PanelStateNetworkModeEnum): void
   (e: 'openSettings'): void
   (e: 'goLogin'): void
   (e: 'scrollToTop'): void
@@ -40,42 +34,6 @@ const emit = defineEmits<{
         <span>回到顶部</span>
       </NTooltip>
     </Transition>
-
-    <!-- 网络模式切换：内网 -> 外网 -->
-    <NTooltip
-      v-if="networkMode === PanelStateNetworkModeEnum.lan && netModeChangeButtonShow"
-      placement="left"
-      trigger="hover"
-    >
-      <template #trigger>
-        <button
-          type="button"
-          class="island-btn"
-          @click="emit('changeNetwork', PanelStateNetworkModeEnum.wan)"
-        >
-          <SvgIcon class="island-icon" icon="material-symbols:lan-outline-rounded" />
-        </button>
-      </template>
-      <span>{{ t('panelHome.changeToWanModel') }}</span>
-    </NTooltip>
-
-    <!-- 网络模式切换：外网 -> 内网 -->
-    <NTooltip
-      v-if="networkMode === PanelStateNetworkModeEnum.wan && netModeChangeButtonShow"
-      placement="left"
-      trigger="hover"
-    >
-      <template #trigger>
-        <button
-          type="button"
-          class="island-btn"
-          @click="emit('changeNetwork', PanelStateNetworkModeEnum.lan)"
-        >
-          <SvgIcon class="island-icon" icon="mdi:wan" />
-        </button>
-      </template>
-      <span>{{ t('panelHome.changeToLanModel') }}</span>
-    </NTooltip>
 
     <!-- 登录后：管理应用中心 -->
     <NTooltip v-if="visitMode === VisitMode.VISIT_MODE_LOGIN" placement="left" trigger="hover">

@@ -1,5 +1,5 @@
 import { ss } from '@/utils/storage'
-import { PanelPanelConfigStyleEnum, PanelStateNetworkModeEnum } from '@/enums'
+import { PanelPanelConfigStyleEnum } from '@/enums'
 const LOCAL_NAME = 'panelStorage'
 
 export function defaultStatePanelConfig(): Panel.panelConfig {
@@ -25,8 +25,6 @@ export function defaultStatePanelConfig(): Panel.panelConfig {
     systemMonitorShow: false,
     systemMonitorShowTitle: true,
     systemMonitorPublicVisitModeShow: false,
-    netModeChangeButtonShow: true,
-
   }
 }
 
@@ -34,7 +32,6 @@ export function defaultState(): Panel.State {
   return {
     rightSiderCollapsed: false,
     leftSiderCollapsed: false,
-    networkMode: PanelStateNetworkModeEnum.wan,
     panelConfig: { ...defaultStatePanelConfig() },
   }
 }

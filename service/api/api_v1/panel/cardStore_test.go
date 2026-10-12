@@ -227,3 +227,21 @@ func TestDeletingSharedUploadRemovesLastReferenceOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestRetiredLanURLIsHiddenAndPreserved(t *testing.T) {
+	db := testDB(t)
+	group := createGroup(t, db, 1, 0)
+	card := models.ItemIcon{UserId: 1, ItemIconGroupId: int(group.ID), Url: "https://example.com", Title: "old", LanUrl: "http://192.168.1.2"}
+	db.Create(&card)
+	res := request(t, 1, false, (&ItemIcon{}).Edit, map[string]interface{}{"id": card.ID, "url": "https://example.com", "title": "new", "lanUrl": "http://10.0.0.1", "itemIconGroupId": group.ID})
+	if res["code"] != float64(0) {
+		t.Fatal(res)
+	}
+	if _, exists := res["data"].(map[string]interface{})["lanUrl"]; exists {
+		t.Fatal("LAN address exposed", res)
+	}
+	db.First(&card, card.ID)
+	if card.Title != "new" || card.LanUrl != "http://192.168.1.2" {
+		t.Fatal(card.Title, card.LanUrl)
+	}
+}

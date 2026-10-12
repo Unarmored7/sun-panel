@@ -26,7 +26,6 @@ const restoreDefault: Panel.Info = {
   icon: null,
   title: '',
   url: '',
-  lanUrl: '',
   description: '',
   openMethod: 2,
 }
@@ -320,9 +319,6 @@ function getGroupListOptions() {
         </div>
         <NFormItem path="itemIconGroupId" :label="t('iconItem.iconGroup')">
           <NSelect v-model:value="model.itemIconGroupId" :options="itemIconGroupOptions" />
-        </NFormItem>
-        <NFormItem path="lanUrl" :label="$t('iconItem.lanUrl')">
-          <NInput v-model:value="model.lanUrl" type="text" :maxlength="1000" :placeholder="$t('iconItem.lanUrlInputPlaceholder')" />
         </NFormItem>
         <NFormItem path="openMethod" :label="$t('iconItem.openMethod')">
           <NSelect v-model:value="model.openMethod" :options="options" />

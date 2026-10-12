@@ -128,7 +128,7 @@ func saveCard(tx *gorm.DB, card *models.ItemIcon, user uint, old *[]models.ItemI
 	card.BackgroundColor = selected.BackgroundColor
 	card.ExpandParam = selected.ExpandParam
 	return tx.Model(&models.ItemIcon{}).Where("id=? AND user_id=?", card.ID, user).
-		Select("IconJson", "Title", "Url", "LanUrl", "Description", "OpenMethod", "Sort", "ItemIconGroupId", "URLKey").Updates(card).Error
+		Select("IconJson", "Title", "Url", "Description", "OpenMethod", "Sort", "ItemIconGroupId", "URLKey").Updates(card).Error
 }
 
 func readCardIcon(card *models.ItemIcon) {

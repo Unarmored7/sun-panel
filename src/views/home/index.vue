@@ -11,7 +11,7 @@ import { getList as getGroupList } from '@/api/panel/itemIconGroup'
 
 import { setTitle, updateLocalUserInfo } from '@/utils/cmn'
 import { useAuthStore, usePanelState } from '@/store'
-import { PanelPanelConfigStyleEnum, PanelStateNetworkModeEnum } from '@/enums'
+import { PanelPanelConfigStyleEnum } from '@/enums'
 import { VisitMode } from '@/enums/auth'
 import { router } from '@/router'
 import { t } from '@/locales'
@@ -146,14 +146,7 @@ function handleItemClick(itemGroupIndex: number, item: Panel.ItemInfo) {
     return
   }
 
-  let jumpUrl = ''
-
-  if (item)
-    jumpUrl = (panelState.networkMode === PanelStateNetworkModeEnum.lan ? item.lanUrl : item.url) as string
-  if (item.lanUrl === '')
-    jumpUrl = item.url
-
-  openPage(item.openMethod, jumpUrl, item.title)
+  openPage(item.openMethod, item.url, item.title)
 }
 
 function handWindowIframeIdLoad(payload: Event) {
@@ -195,20 +188,9 @@ function updateItemIconGroupByNet(itemIconGroupIndex: number, itemIconGroupId: n
 function handleRightMenuSelect(key: string | number) {
   dropdownShow.value = false
   // console.log(currentRightSelectItem, key)
-  let jumpUrl = panelState.networkMode === PanelStateNetworkModeEnum.lan ? currentRightSelectItem.value?.lanUrl : currentRightSelectItem.value?.url
-  if (currentRightSelectItem.value?.lanUrl === '')
-    jumpUrl = currentRightSelectItem.value.url
   switch (key) {
     case 'newWindows':
-      window.open(jumpUrl)
-      break
-    case 'openWanUrl':
-      if (currentRightSelectItem.value)
-        openPage(currentRightSelectItem.value?.openMethod, currentRightSelectItem.value?.url, currentRightSelectItem.value?.title)
-      break
-    case 'openLanUrl':
-      if (currentRightSelectItem.value && currentRightSelectItem.value.lanUrl)
-        openPage(currentRightSelectItem.value?.openMethod, currentRightSelectItem.value.lanUrl, currentRightSelectItem.value?.title)
+      window.open(currentRightSelectItem.value?.url)
       break
     case 'edit':
       // 这里有个奇怪的问题，如果不使用{...}的方式 父组件的值会同步修改 标记一下
@@ -262,15 +244,6 @@ function handleEditSuccess(item: Panel.ItemInfo) {
   getList()
 }
 
-function handleChangeNetwork(mode: PanelStateNetworkModeEnum) {
-  panelState.setNetworkMode(mode)
-  if (mode === PanelStateNetworkModeEnum.lan)
-    ms.success(t('panelHome.changeToLanModelSuccess'))
-
-  else
-    ms.success(t('panelHome.changeToWanModelSuccess'))
-}
-
 // 结束拖拽
 // function handleEndDrag(event: any, itemIconGroup: Panel.ItemIconGroup) {
 //   // console.log(event)
@@ -308,20 +281,6 @@ function getDropdownMenuOptions() {
     },
 
   ]
-
-  if (currentRightSelectItem.value?.lanUrl && panelState.networkMode === PanelStateNetworkModeEnum.wan) {
-    dropdownMenuOptions.push({
-      label: t('panelHome.openLanUrl'),
-      key: 'openLanUrl',
-    })
-  }
-
-  if (currentRightSelectItem.value?.lanUrl && panelState.networkMode === PanelStateNetworkModeEnum.lan) {
-    dropdownMenuOptions.push({
-      label: t('panelHome.openWanUrl'),
-      key: 'openWanUrl',
-    })
-  }
 
   if (authStore.visitMode === VisitMode.VISIT_MODE_LOGIN) {
     dropdownMenuOptions.push({
@@ -629,11 +588,8 @@ function handleAddItem(itemIconGroupId?: number) {
 
     <!-- 悬浮控制岛与应用中心 -->
     <UsagiFloatingIsland
-      :network-mode="panelState.networkMode"
-      :net-mode-change-button-show="panelState.panelConfig.netModeChangeButtonShow"
       :visit-mode="authStore.visitMode"
       :show-back-top="showBackTop"
-      @change-network="handleChangeNetwork"
       @open-settings="settingModalShow = !settingModalShow"
       @go-login="router.push('/login')"
       @scroll-to-top="scrollToTop"

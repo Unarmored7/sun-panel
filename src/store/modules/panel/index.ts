@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { defaultState, defaultStatePanelConfig, getLocalState, removeLocalState, setLocalState } from './helper'
 import { router } from '@/router'
-import type { PanelStateNetworkModeEnum } from '@/enums'
 import { get as getUserConfig } from '@/api/panel/userConfig'
 export const usePanelState = defineStore('panel', {
   state: (): Panel.State => getLocalState() || defaultState(),
@@ -19,11 +18,6 @@ export const usePanelState = defineStore('panel', {
     setRightSiderCollapsed(Collapsed: boolean) {
       this.rightSiderCollapsed = Collapsed
       // this.recordState()
-    },
-
-    setNetworkMode(mode: PanelStateNetworkModeEnum) {
-      this.networkMode = mode
-      this.recordState()
     },
 
     // 获取云端（搭建的服务器）的面板配置

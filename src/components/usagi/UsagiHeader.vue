@@ -23,13 +23,6 @@ const emit = defineEmits<{
   (e: 'goLogin'): void
 }>()
 
-const crossLinks = [
-  { title: '导航', href: 'https://nav.usaginest.com', icon: 'lucide:compass', active: true },
-  { title: '博客', href: 'https://blog.usaginest.com', icon: 'lucide:pen' },
-  { title: '网盘', href: 'https://files.usaginest.com', icon: 'lucide:folder-open' },
-  { title: '论坛', href: 'https://bbs.usaginest.com', icon: 'lucide:messages' },
-]
-
 // A compact clock sized for the bar; the large desk clock does not fit 54px.
 const now = ref(new Date())
 let clockTimer: ReturnType<typeof setInterval> | undefined
@@ -45,41 +38,24 @@ const weekKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 const clockDate = computed(() => `${now.value.getMonth() + 1}-${now.value.getDate()} ${t(`deskModule.clock.${weekKeys[now.value.getDay()]}`)}`)
 
 const brandTitle = computed(() => {
-  if (!props.logoText || props.logoText === 'Sun-Panel' || props.logoText === '乌萨奇导航')
+  const text = (props.logoText || '').trim()
+  if (!text || text === 'Sun-Panel' || text === '乌萨奇导航' || /usagi/i.test(text))
     return { cn: '乌萨奇导航', en: 'Usagi Nav' }
-  return { cn: props.logoText, en: 'Usagi Nav' }
+  return { cn: text, en: 'Usagi Nav' }
 })
 </script>
 
 <template>
   <header class="usagi-global-header" role="banner">
     <div class="header-inner">
-      <!-- 左侧：品牌 Logo 与站名 -->
+      <!-- 左侧：品牌 Logo 与站名 (与网盘/论坛/博客统一格式) -->
       <div class="header-left">
-        <a href="/" class="header-brand" aria-label="乌萨奇导航首页">
+        <a href="/#/" class="header-brand" aria-label="乌萨奇导航首页">
           <span class="brand-cn">{{ brandTitle.cn }}</span>
           <span class="brand-dot">·</span>
           <span class="brand-en">{{ brandTitle.en }}</span>
         </a>
       </div>
-
-      <!-- 中间：跨站核心导航 (与网盘/论坛/博客统一互通) -->
-      <nav class="header-center" aria-label="全站导航">
-        <a
-          v-for="link in crossLinks"
-          :key="link.title"
-          :href="link.href"
-          class="header-nav-link"
-          :class="{ 'is-active': link.active }"
-          :target="link.active ? undefined : '_blank'"
-          rel="noopener noreferrer"
-          :title="link.title"
-          :aria-current="link.active ? 'page' : undefined"
-        >
-          <SvgIcon :icon="link.icon" class="link-icon" />
-          <span class="link-text">{{ link.title }}</span>
-        </a>
-      </nav>
 
       <!-- 右侧：系统功能控件 (微透白胶囊风格) -->
       <div class="header-right">
@@ -129,6 +105,9 @@ const brandTitle = computed(() => {
   color: #FFF2D5;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .header-inner {
@@ -177,49 +156,6 @@ const brandTitle = computed(() => {
   font-size: 14px;
   font-weight: 600;
   color: rgba(255, 242, 213, 0.9);
-}
-
-/* 中间导航链接 */
-.header-center {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.header-nav-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  color: #FFF2D5 !important;
-  text-decoration: none !important;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  transition: all 0.18s ease;
-}
-
-.header-nav-link .link-icon {
-  font-size: 13px;
-  color: var(--usagi-pink-primary, #FFB7CE);
-  transition: transform 0.18s ease;
-}
-
-.header-nav-link:hover {
-  color: #FFFFFF !important;
-  background-color: rgba(255, 181, 200, 0.18);
-}
-
-.header-nav-link:hover .link-icon {
-  transform: scale(1.1);
-  color: var(--usagi-pink-hover, #F28BB6);
-}
-
-.header-nav-link.is-active {
-  background-color: rgba(255, 255, 255, 0.20);
-  color: #FFFFFF !important;
-  font-weight: 600;
 }
 
 /* 右侧系统控件 */
@@ -296,13 +232,6 @@ const brandTitle = computed(() => {
   transform: scale(0.96);
 }
 
-/* 中等宽度：时钟只保留时间，给跨站链接留出空间 */
-@media (max-width: 900px) {
-  .clock-date {
-    display: none;
-  }
-}
-
 /* 移动端适配 */
 @media (max-width: 640px) {
   .usagi-global-header {
@@ -314,19 +243,8 @@ const brandTitle = computed(() => {
   .brand-en,
   .brand-dot,
   .clock-capsule,
-  .manage-btn .btn-text,
-  .link-text {
+  .manage-btn .btn-text {
     display: none;
-  }
-  /* Phones keep the cross-site links as icons. */
-  .header-center {
-    gap: 2px;
-  }
-  .header-nav-link {
-    padding: 7px;
-  }
-  .header-nav-link .link-icon {
-    font-size: 16px;
   }
   .header-btn {
     height: 28px;

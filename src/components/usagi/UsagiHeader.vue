@@ -102,7 +102,7 @@ const brandTitle = computed(() => {
   width: 100%;
   height: 54px;
   background-color: var(--usagi-brown-footer, #8A7A6A);
-  color: #FFF2D5;
+  color: #FFFFFF;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(8px);
@@ -121,7 +121,7 @@ const brandTitle = computed(() => {
   box-sizing: border-box;
 }
 
-/* 品牌 Logo 标题 */
+/* 品牌 Logo 标题 (纯白高级质感，与网盘/论坛/博客完全一致) */
 .header-left {
   display: flex;
   align-items: center;
@@ -131,31 +131,37 @@ const brandTitle = computed(() => {
 .header-brand {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   color: #FFFFFF !important;
   text-decoration: none !important;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.3px;
   transition: opacity 0.2s ease;
   user-select: none;
 }
 
 .header-brand:hover {
-  opacity: 0.92;
+  opacity: 0.88;
+}
+
+.brand-cn {
+  color: #FFFFFF !important;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .brand-dot {
-  color: var(--usagi-pink-primary, #FFB7CE);
+  color: #FFFFFF !important;
+  opacity: 0.7;
+  margin: 0 6px;
   font-weight: 700;
-  padding: 0 1px;
 }
 
 .brand-en {
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(255, 242, 213, 0.9);
+  color: #FFFFFF !important;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 /* 右侧系统控件 */
@@ -173,9 +179,9 @@ const brandTitle = computed(() => {
   padding: 4px 10px;
   height: 30px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #FFF2D5;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
@@ -189,7 +195,7 @@ const brandTitle = computed(() => {
 
 .clock-date {
   font-size: 12px;
-  color: var(--usagi-brown-mute, rgba(255, 242, 213, 0.82));
+  color: rgba(255, 255, 255, 0.82);
 }
 
 /* 微透白胶囊按钮 */
@@ -203,7 +209,7 @@ const brandTitle = computed(() => {
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.16);
-  color: #FFF2D5;
+  color: #FFFFFF;
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
@@ -213,7 +219,7 @@ const brandTitle = computed(() => {
 
 .header-btn .btn-icon {
   font-size: 15px;
-  color: var(--usagi-pink-primary, #FFB7CE);
+  color: #FFFFFF;
   transition: transform 0.18s ease;
 }
 
@@ -224,8 +230,8 @@ const brandTitle = computed(() => {
 }
 
 .header-btn:hover .btn-icon {
-  transform: scale(1.1);
-  color: var(--usagi-pink-hover, #F28BB6);
+  transform: scale(1.08);
+  color: #FFFFFF;
 }
 
 .header-btn:active {
@@ -240,8 +246,16 @@ const brandTitle = computed(() => {
   .header-inner {
     padding: 0 10px;
   }
-  .brand-en,
-  .brand-dot,
+  .header-brand {
+    font-size: 15px;
+  }
+  .brand-cn,
+  .brand-en {
+    font-size: 15px;
+  }
+  .brand-dot {
+    margin: 0 4px;
+  }
   .clock-capsule,
   .manage-btn .btn-text {
     display: none;

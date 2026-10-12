@@ -16,6 +16,7 @@ import { router } from '@/router'
 import { t } from '@/locales'
 import { resolveGroupCardStyle } from '@/utils/groupCardStyle'
 import UsagiFooter from '@/components/usagi/UsagiFooter.vue'
+import UsagiHeader from '@/components/usagi/UsagiHeader.vue'
 import UsagiCategoryTabs from '@/components/usagi/UsagiCategoryTabs.vue'
 import UsagiFloatingIsland from '@/components/usagi/UsagiFloatingIsland.vue'
 
@@ -118,7 +119,7 @@ async function handleCategorySelect(id: number | 'all') {
   }
   const el = document.getElementById(`usagi-group-${id}`)
   if (el) {
-    const y = el.getBoundingClientRect().top + window.pageYOffset - 90
+    const y = el.getBoundingClientRect().top + window.pageYOffset - 130
     window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
   }
 }
@@ -139,7 +140,7 @@ function updateScrollState() {
   showBackTop.value = scrollY > 260
 
   if (!currentSearchKeyword.value && items.value.length > 0) {
-    const scrollPos = scrollY + 120
+    const scrollPos = scrollY + 150
     let currentId: number | 'all' = 'all'
 
     for (let i = 0; i < items.value.length; i++) {
@@ -399,6 +400,16 @@ function handleAddItem(itemIconGroupId?: number) {
 
 <template>
   <div class="sun-main usagi-page">
+    <!-- 全局统一顶栏 (乌萨奇窝标准顶栏) -->
+    <UsagiHeader
+      :logo-text="panelState.panelConfig.logoText"
+      :clock-show="panelState.panelConfig.clockShow !== false"
+      :clock-show-second="panelState.panelConfig.clockShowSecond"
+      :visit-mode="authStore.visitMode"
+      @open-settings="settingModalShow = !settingModalShow"
+      @go-login="router.push('/login')"
+    />
+
     <div
       v-if="panelState.panelConfig.backgroundImageSrc" class="cover wallpaper" :style="{
         filter: `blur(${panelState.panelConfig.backgroundBlur}px)`,

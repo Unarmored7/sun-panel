@@ -159,7 +159,7 @@ onUnmounted(() => {
 <style scoped>
 .usagi-category-nav-wrapper {
   position: sticky;
-  top: 14px;
+  top: 66px;
   z-index: 25;
   display: flex;
   justify-content: center;
@@ -312,7 +312,7 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .usagi-category-nav-wrapper {
-    top: 8px;
+    top: 56px;
     margin: 12px auto 18px;
     padding: 0 8px;
   }

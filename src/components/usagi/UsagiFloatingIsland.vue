@@ -1,26 +1,22 @@
 <script setup lang="ts">
 import { NTooltip } from 'naive-ui'
 import SvgIcon from '@/components/common/SvgIcon/index.vue'
-import { VisitMode } from '@/enums/auth'
 import { t } from '@/locales'
 
+// Settings and login live in the top bar; this only offers back-to-top on long pages.
 defineProps<{
-  visitMode: VisitMode
   showBackTop: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'openSettings'): void
-  (e: 'goLogin'): void
   (e: 'scrollToTop'): void
 }>()
 </script>
 
 <template>
-  <aside class="usagi-floating-island" aria-label="快捷工具栏">
-    <!-- 回到顶部 -->
-    <Transition name="island-fade">
-      <NTooltip v-if="showBackTop" placement="left" trigger="hover">
+  <Transition name="island-fade">
+    <aside v-if="showBackTop" class="usagi-floating-island" aria-label="快捷工具栏">
+      <NTooltip placement="left" trigger="hover">
         <template #trigger>
           <button
             type="button"
@@ -33,36 +29,8 @@ const emit = defineEmits<{
         </template>
         <span>回到顶部</span>
       </NTooltip>
-    </Transition>
-
-    <!-- 登录后：管理应用中心 -->
-    <NTooltip v-if="visitMode === VisitMode.VISIT_MODE_LOGIN" placement="left" trigger="hover">
-      <template #trigger>
-        <button
-          type="button"
-          class="island-btn manage-btn"
-          @click="emit('openSettings')"
-        >
-          <SvgIcon class="island-icon" icon="majesticons-applications" />
-        </button>
-      </template>
-      <span>应用管理与设置</span>
-    </NTooltip>
-
-    <!-- 访客模式：登录入口 -->
-    <NTooltip v-if="visitMode === VisitMode.VISIT_MODE_PUBLIC" placement="left" trigger="hover">
-      <template #trigger>
-        <button
-          type="button"
-          class="island-btn login-btn"
-          @click="emit('goLogin')"
-        >
-          <SvgIcon class="island-icon" icon="material-symbols:account-circle" />
-        </button>
-      </template>
-      <span>{{ $t('panelHome.goToLogin') }}</span>
-    </NTooltip>
-  </aside>
+    </aside>
+  </Transition>
 </template>
 
 <style scoped>
@@ -116,10 +84,6 @@ const emit = defineEmits<{
 
 .island-btn:active {
   transform: scale(0.92);
-}
-
-.manage-btn:hover {
-  background: rgba(255, 183, 206, 0.28);
 }
 
 /* 动效过渡 */

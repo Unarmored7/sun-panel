@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { NTooltip } from 'naive-ui'
-import { SvgIcon } from '@/components/common'
-import { Clock } from '@/components/deskModule'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+// Direct imports: the component barrels would pull unrelated components into the home chunk.
+import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { VisitMode } from '@/enums/auth'
 import { t } from '@/locales'
 
@@ -31,6 +30,20 @@ const crossLinks = [
   { title: '论坛', href: 'https://bbs.usaginest.com', icon: 'lucide:messages' },
 ]
 
+// A compact clock sized for the bar; the large desk clock does not fit 54px.
+const now = ref(new Date())
+let clockTimer: ReturnType<typeof setInterval> | undefined
+onMounted(() => { clockTimer = setInterval(() => { now.value = new Date() }, 1000) })
+onUnmounted(() => clearInterval(clockTimer))
+const pad = (value: number) => String(value).padStart(2, '0')
+const clockTime = computed(() => {
+  const d = now.value
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return props.clockShowSecond ? `${time}:${pad(d.getSeconds())}` : time
+})
+const weekKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+const clockDate = computed(() => `${now.value.getMonth() + 1}-${now.value.getDate()} ${t(`deskModule.clock.${weekKeys[now.value.getDay()]}`)}`)
+
 const brandTitle = computed(() => {
   if (!props.logoText || props.logoText === 'Sun-Panel' || props.logoText === '乌萨奇导航')
     return { cn: '乌萨奇导航', en: 'Usagi Nav' }
@@ -51,7 +64,7 @@ const brandTitle = computed(() => {
       </div>
 
       <!-- 中间：跨站核心导航 (与网盘/论坛/博客统一互通) -->
-      <nav class="header-center hidden md:flex" aria-label="全站导航">
+      <nav class="header-center" aria-label="全站导航">
         <a
           v-for="link in crossLinks"
           :key="link.title"
@@ -69,25 +82,23 @@ const brandTitle = computed(() => {
       <!-- 右侧：系统功能控件 (微透白胶囊风格) -->
       <div class="header-right">
         <!-- 时钟微胶囊 -->
-        <div v-if="clockShow" class="clock-capsule hidden sm:inline-flex">
-          <Clock :hide-second="!clockShowSecond" />
+        <div v-if="clockShow" class="clock-capsule" aria-label="当前时间">
+          <span class="clock-time">{{ clockTime }}</span>
+          <span class="clock-date">{{ clockDate }}</span>
         </div>
 
         <!-- 管理中心入口 (已登录) -->
-        <NTooltip v-if="visitMode === VisitMode.VISIT_MODE_LOGIN" placement="bottom" trigger="hover">
-          <template #trigger>
-            <button
-              type="button"
-              class="header-btn manage-btn"
-              aria-label="应用管理中心"
-              @click="emit('openSettings')"
-            >
-              <SvgIcon icon="majesticons-applications" class="btn-icon" />
-              <span class="btn-text hidden sm:inline">管理</span>
-            </button>
-          </template>
-          <span>应用管理与设置</span>
-        </NTooltip>
+        <button
+          v-if="visitMode === VisitMode.VISIT_MODE_LOGIN"
+          type="button"
+          class="header-btn manage-btn"
+          title="应用管理与设置"
+          aria-label="应用管理与设置"
+          @click="emit('openSettings')"
+        >
+          <SvgIcon icon="majesticons-applications" class="btn-icon" />
+          <span class="btn-text">管理</span>
+        </button>
 
         <!-- 登录入口 (访客) -->
         <button
@@ -116,9 +127,6 @@ const brandTitle = computed(() => {
   color: #FFF2D5;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .header-inner {
@@ -171,8 +179,13 @@ const brandTitle = computed(() => {
 
 /* 中间导航链接 */
 .header-center {
+  display: none;
   align-items: center;
   gap: 6px;
+}
+
+@media (min-width: 768px) {
+  .header-center { display: flex; }
 }
 
 .header-nav-link {
@@ -221,7 +234,8 @@ const brandTitle = computed(() => {
 
 .clock-capsule {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
+  gap: 8px;
   padding: 4px 10px;
   height: 30px;
   border-radius: 6px;
@@ -231,6 +245,17 @@ const brandTitle = computed(() => {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
+  line-height: 20px;
+}
+
+.clock-time {
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.clock-date {
+  font-size: 12px;
+  color: var(--usagi-brown-mute, rgba(255, 242, 213, 0.82));
 }
 
 /* 微透白胶囊按钮 */
@@ -281,7 +306,10 @@ const brandTitle = computed(() => {
   .header-inner {
     padding: 0 10px;
   }
-  .brand-en {
+  .brand-en,
+  .brand-dot,
+  .clock-capsule,
+  .manage-btn .btn-text {
     display: none;
   }
   .header-btn {
@@ -289,27 +317,5 @@ const brandTitle = computed(() => {
     padding: 0 8px;
     font-size: 12px;
   }
-}
-
-/* 暖夜暗黑模式适配 */
-:global(.dark) .usagi-global-header {
-  background-color: var(--usagi-brown-footer, #181413);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
-}
-
-:global(.dark) .clock-capsule {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-:global(.dark) .header-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-:global(.dark) .header-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 183, 206, 0.4);
 }
 </style>

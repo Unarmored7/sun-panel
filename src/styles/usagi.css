@@ -17,10 +17,8 @@ button, input, select, textarea { font-family: inherit; }
 .usagi-page .cover, .usagi-page .mask { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 .usagi-page .cover { transform: none; }
 .usagi-header { max-width: 800px; margin: 0 auto 32px; text-align: center; }
-.usagi-header-title { display: flex; gap: 12px; align-items: center; justify-content: center; color: var(--usagi-text-main); }
-.usagi-header-title .logo { font-size: clamp(24px, 3vw, 36px); font-weight: 600; line-height: 1.35; letter-spacing: -.02em; }
-.usagi-header-title .text-shadow, .usagi-page .group-title { text-shadow: none; }
-.usagi-search { margin-top: 20px; }
+.usagi-page .group-title { text-shadow: none; }
+.usagi-search { margin-top: 0; }
 .usagi-page .search-container { border-radius: var(--usagi-radius-lg); background: var(--usagi-bg-card); box-shadow: var(--usagi-shadow-sm); }
 .usagi-page .search-container:focus-within { border-color: var(--usagi-pink-primary); box-shadow: 0 0 0 3px var(--usagi-pink-wash); }
 .usagi-page .item-list { margin-top: 28px; }

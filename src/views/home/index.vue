@@ -2,7 +2,6 @@
 import { NButton, NDropdown, NModal, NSkeleton, NSpin, useDialog, useMessage } from 'naive-ui'
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from './components/AppIcon/index.vue'
-import Clock from '@/components/deskModule/Clock/index.vue'
 import SearchBox from '@/components/deskModule/SearchBox/index.vue'
 import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { deletes, getListByGroupId, saveSort } from '@/api/panel/itemIcon'
@@ -427,7 +426,6 @@ function handleAddItem(itemIconGroupId?: number) {
         </NButton>
       </div>
       <div v-else role="status" aria-label="正在加载导航">
-        <div class="usagi-loading-header" />
         <div class="usagi-loading-search" />
         <div class="usagi-loading-tabs" />
         <div class="usagi-loading-grid">
@@ -444,22 +442,9 @@ function handleAddItem(itemIconGroupId?: number) {
           maxWidth: (panelState.panelConfig.maxWidth ?? '1200') + panelState.panelConfig.maxWidthUnit,
         }"
       >
-        <!-- 头 -->
-        <header class="usagi-header">
-          <div class="usagi-header-title">
-            <div v-if="panelState.panelConfig.logoShow !== false" class="logo">
-              <span class="usagi-brand">
-                {{ panelState.panelConfig.logoText }}
-              </span>
-            </div>
-            <div v-if="panelState.panelConfig.clockShow !== false && panelState.panelConfig.logoShow !== false" class="divider text-base lg:text-2xl mx-[10px]">
-              |
-            </div>
-            <div v-if="panelState.panelConfig.clockShow !== false" class="text-shadow">
-              <Clock :hide-second="!panelState.panelConfig.clockShowSecond" />
-            </div>
-          </div>
-          <div v-if="panelState.panelConfig.searchBoxShow" class="usagi-search">
+        <!-- 站名与时钟位于顶栏；此处只保留搜索框 -->
+        <header v-if="panelState.panelConfig.searchBoxShow" class="usagi-header">
+          <div class="usagi-search">
             <SearchBox :background="panelState.panelConfig.searchBoxBackground" :text-color="panelState.panelConfig.searchBoxTextColor" :border-color="panelState.panelConfig.searchBoxBorderColor" @itemSearch="itemFrontEndSearch" />
           </div>
         </header>
@@ -587,10 +572,7 @@ function handleAddItem(itemIconGroupId?: number) {
 
     <!-- 悬浮控制岛与应用中心 -->
     <UsagiFloatingIsland
-      :visit-mode="authStore.visitMode"
       :show-back-top="showBackTop"
-      @open-settings="settingModalShow = !settingModalShow"
-      @go-login="router.push('/login')"
       @scroll-to-top="scrollToTop"
     />
 

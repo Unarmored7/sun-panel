@@ -15,13 +15,13 @@ import (
 	"testing"
 )
 
-func TestSavedCardsWithoutIconGetOneDiscovered(t *testing.T) {
+func TestSavedCardsGetMissingDetailsDiscovered(t *testing.T) {
 	db := testDB(t)
 	group := createGroup(t, db, 1, 0)
 	var down atomic.Int32
 	oldCache := iconcache.Default
 	iconcache.Default = iconcache.New(t.TempDir(), &http.Client{Transport: iconTransport(func(r *http.Request) (*http.Response, error) {
-		body := []byte(`<html><head><link rel="apple-touch-icon" href="/touch.png"></head></html>`)
+		body := []byte(`<html><head><title>Found Name · Tagline</title><meta property="og:site_name" content="Found Name"><meta name="description" content="Found description"><link rel="apple-touch-icon" href="/touch.png"></head></html>`)
 		switch {
 		case r.URL.Host == "down.example":
 			down.Add(1)
@@ -46,7 +46,7 @@ func TestSavedCardsWithoutIconGetOneDiscovered(t *testing.T) {
 		t.Fatal(res)
 	}
 	res = request(t, 1, false, (&ItemIcon{}).AddMultiple, []map[string]interface{}{
-		{"url": "https://imported.example", "title": "imported", "itemIconGroupId": group.ID},
+		{"url": "https://imported.example", "title": "imported.example", "itemIconGroupId": group.ID},
 		{"url": "https://text.example", "title": "text", "itemIconGroupId": group.ID, "icon": map[string]interface{}{"itemType": 1, "text": "T"}},
 		{"url": "https://down.example", "title": "down", "itemIconGroupId": group.ID},
 	})
@@ -58,6 +58,13 @@ func TestSavedCardsWithoutIconGetOneDiscovered(t *testing.T) {
 		if got := icon(url); got.ItemType != 2 || got.Src != url+"/touch.png" {
 			t.Fatal("icon not saved", url, got)
 		}
+	}
+	// Address-only names and empty descriptions are filled; chosen names stay.
+	var site, imported models.ItemIcon
+	db.Where("url=?", "https://site.example").First(&site)
+	db.Where("url=?", "https://imported.example").First(&imported)
+	if site.Title != "site" || site.Description != "Found description" || imported.Title != "Found Name" || imported.Description != "Found description" {
+		t.Fatal(site.Title, site.Description, imported.Title, imported.Description)
 	}
 	if got := icon("https://text.example"); got.ItemType != 1 || got.Src != "" {
 		t.Fatal("existing icon replaced", got)

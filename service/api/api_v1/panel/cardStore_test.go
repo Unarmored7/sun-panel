@@ -48,7 +48,7 @@ func TestCachedFileLifecycleAcrossReplacementAndGroups(t *testing.T) {
 	local, _ := iconcache.Default.Fetch(context.Background(), a)
 	next, _ := iconcache.Default.Fetch(context.Background(), b)
 	save := func(user uint, g uint, site, source string) map[string]interface{} {
-		res := request(t, user, false, (&ItemIcon{}).Edit, map[string]interface{}{"url": site, "title": "site", "itemIconGroupId": g, "icon": map[string]interface{}{"itemType": 2, "src": source, "cachedSrc": "/untrusted"}})
+		res := request(t, user, false, (&ItemIcon{}).Edit, map[string]interface{}{"url": site, "title": "site", "description": "fixed", "itemIconGroupId": g, "icon": map[string]interface{}{"itemType": 2, "src": source, "cachedSrc": "/untrusted"}})
 		if res["code"] != float64(0) {
 			t.Fatal(res)
 		}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/PuerkitoBio/goquery"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,18 +36,25 @@ func (c *Cache) Discover(ctx context.Context, raw string) (SiteInfo, error) {
 		base = final
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
 		if err == nil {
-			title, _ := doc.Find(`meta[property="og:title"]`).First().Attr("content")
+			title := doc.Find("title").First().Text()
 			if strings.TrimSpace(title) == "" {
-				title = doc.Find("title").First().Text()
+				title, _ = doc.Find(`meta[property="og:title"]`).First().Attr("content")
 			}
-			if strings.TrimSpace(title) != "" {
-				info.Title = strings.Join(strings.Fields(title), " ")
+			site := ""
+			for _, selector := range []string{`meta[property="og:site_name"]`, `meta[name="application-name"]`, `meta[name="apple-mobile-web-app-title"]`} {
+				if value, _ := doc.Find(selector).First().Attr("content"); strings.TrimSpace(value) != "" {
+					site = value
+					break
+				}
+			}
+			if name := siteName(title, site, base); name != "" {
+				info.Title = name
 			}
 			description, _ := doc.Find(`meta[name="description"]`).First().Attr("content")
 			if description == "" {
 				description, _ = doc.Find(`meta[property="og:description"]`).First().Attr("content")
 			}
-			info.Description = strings.Join(strings.Fields(description), " ")
+			info.Description = clip(strings.Join(strings.Fields(description), " "), 100)
 			if href, exists := doc.Find("base[href]").First().Attr("href"); exists {
 				if u, e := base.Parse(href); e == nil && (u.Scheme == "https" || u.Scheme == "http") {
 					base = u
@@ -103,4 +111,51 @@ func (c *Cache) Discover(ctx context.Context, raw string) (SiteInfo, error) {
 		}
 	}
 	return info, errors.New("no usable icon found")
+}
+
+var titleSeparator = regexp.MustCompile(`\s+[|·•–—\-:]\s+|\s*[｜：]\s*`)
+
+// A short bookmark name: the site's own name for a home page, otherwise the
+// page-specific part of the title ("requests · PyPI" -> "requests").
+func siteName(title, site string, page *url.URL) string {
+	site = strings.Join(strings.Fields(site), " ")
+	parts := []string{}
+	for _, part := range titleSeparator.Split(strings.Join(strings.Fields(title), " "), -1) {
+		if part = strings.TrimSpace(part); part != "" {
+			parts = append(parts, part)
+		}
+	}
+	home := strings.Trim(page.Path, "/") == "" && page.RawQuery == "" && !strings.HasPrefix(page.Fragment, "/")
+	if home && site != "" {
+		return clip(site, 20)
+	}
+	if !home {
+		for _, part := range parts {
+			if !strings.EqualFold(part, site) {
+				return clip(part, 20)
+			}
+		}
+	}
+	if site != "" {
+		return clip(site, 20)
+	}
+	// Without a declared name, prefer the title part naming the domain.
+	label := strings.Split(strings.TrimPrefix(strings.ToLower(page.Hostname()), "www."), ".")[0]
+	for _, part := range parts {
+		if strings.Contains(strings.ReplaceAll(strings.ToLower(part), " ", ""), label) {
+			return clip(part, 20)
+		}
+	}
+	if len(parts) > 0 {
+		return clip(parts[0], 20)
+	}
+	return ""
+}
+
+func clip(value string, limit int) string {
+	runes := []rune(value)
+	if len(runes) > limit {
+		return strings.TrimSpace(string(runes[:limit]))
+	}
+	return value
 }

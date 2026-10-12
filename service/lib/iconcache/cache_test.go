@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -185,5 +186,21 @@ func TestRejectsUnsafeOrInvalidImages(t *testing.T) {
 	}
 	if _, _, err := prepare(prepared); err != nil {
 		t.Fatal("invalid encoded SVG", err)
+	}
+}
+
+func TestSiteNamePrefersShortNames(t *testing.T) {
+	page := func(raw string) *url.URL { u, _ := url.Parse(raw); return u }
+	for _, c := range []struct{ title, site, page, want string }{
+		{"GitHub · Change is constant. GitHub keeps you ahead. · GitHub", "GitHub", "https://github.com", "GitHub"},
+		{"requests · PyPI", "PyPI", "https://pypi.org/project/requests/", "requests"},
+		{"PyPI · The Python Package Index", "", "https://pypi.org/", "PyPI"},
+		{"Welcome | Example Docs", "", "https://docs.example.com/", "Example Docs"},
+		{"哔哩哔哩 (゜-゜)つロ 干杯~-bilibili", "", "https://www.bilibili.com/", "哔哩哔哩 (゜-゜)つロ 干杯~-bil"},
+		{"", "", "https://empty.example/", ""},
+	} {
+		if got := siteName(c.title, c.site, page(c.page)); got != c.want {
+			t.Errorf("%q -> %q, want %q", c.title, got, c.want)
+		}
 	}
 }

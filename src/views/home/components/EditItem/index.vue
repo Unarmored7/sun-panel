@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineEmits, defineProps, onBeforeUnmount, ref, watch } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
-import { NButton, NForm, NFormItem, NGrid, NGridItem, NInput, NModal, NSelect, useMessage } from 'naive-ui'
+import { NButton, NForm, NFormItem, NInput, NModal, NSelect, useMessage } from 'naive-ui'
 import ItemIcon from '@/components/common/ItemIcon/index.vue'
 import { edit, getSiteFavicon } from '@/api/panel/itemIcon'
 import { getList as getGroupList } from '@/api/panel/itemIconGroup'
@@ -40,11 +40,6 @@ const model = ref<Panel.Info>(props.itemInfo ? { ...props.itemInfo } : { ...rest
 const formRef = ref<FormInst | null>(null)
 
 const rules: FormRules = {
-  title: {
-    required: true,
-    trigger: 'blur',
-    message: t('form.required'),
-  },
   url: {
     required: true,
     trigger: 'blur',
@@ -102,14 +97,13 @@ async function editApi() {
   submitLoading.value = false
 }
 
-type IconStatus = 'idle' | 'loading' | 'found' | 'missing'
-const iconStatus = ref<IconStatus>('idle')
+interface SiteInfo { iconUrl: string; originalIconUrl: string; title: string; description: string }
+type DetectStatus = 'idle' | 'loading' | 'found' | 'missing'
+const detectStatus = ref<DetectStatus>('idle')
 let lookupTimer: ReturnType<typeof setTimeout> | undefined
 let generation = 0
 let initialURL = ''
-let initialIcon: Panel.ItemIcon | null = null
-let autoTitle = ''
-let autoDescription = ''
+let initial: Pick<Panel.Info, 'title' | 'description' | 'icon'> = { title: '', description: '', icon: null }
 let lookupSeq = 0
 let lookupURL = ''
 let lookupPromise: Promise<void> | undefined
@@ -126,18 +120,16 @@ function normalizeURL(raw: string) {
   }
 }
 
+function hostname(url: string) {
+  return new URL(url).hostname.replace(/^www\./, '').slice(0, 20)
+}
+
 function hasImageIcon(icon: Panel.ItemIcon | null | undefined) {
   return icon?.itemType === 2 && !!icon.src
 }
 
-function fillHostname(url: string) {
-  if (!model.value.title || model.value.title === autoTitle) {
-    autoTitle = new URL(url).hostname.replace(/^www\./, '').slice(0, 20)
-    model.value.title = autoTitle
-  }
-}
-
-// The icon always comes from the site: a lookup replaces it, and a new URL without one falls back to the title.
+// Name, description and icon all come from the site. A new address replaces
+// them; the saved address only fills gaps unless detection is requested again.
 function detectSite(raw: string, force = false) {
   const url = normalizeURL(raw)
   if (!url)
@@ -148,46 +140,48 @@ function detectSite(raw: string, force = false) {
   const seq = ++lookupSeq
   // Any later URL edit or lookup supersedes this one.
   const stale = () => !show.value || currentGeneration !== generation || seq !== lookupSeq
-  iconStatus.value = 'loading'
+  const replace = url !== initialURL
+  detectStatus.value = 'loading'
   const task = async () => {
-    let found = false
+    let info: SiteInfo | undefined
     try {
-      const { code, data } = await getSiteFavicon<{ iconUrl: string; originalIconUrl: string; title: string; description: string }>(url)
-      if (stale())
-        return
-      if (code === 0) {
-        if (data.title && (!model.value.title || model.value.title === autoTitle)) {
-          autoTitle = [...data.title].slice(0, 20).join('')
-          model.value.title = autoTitle
-        }
-        if (data.description && (!model.value.description || model.value.description === autoDescription)) {
-          autoDescription = [...data.description].slice(0, 100).join('')
-          model.value.description = autoDescription
-        }
-        if (data.iconUrl) {
-          model.value.icon = { itemType: 2, src: data.originalIconUrl || data.iconUrl, cachedSrc: data.iconUrl }
-          found = true
-        }
-      }
+      const { code, data } = await getSiteFavicon<SiteInfo>(url)
+      if (code === 0)
+        info = data
     }
     catch {
-      // An unreachable site keeps its URL; the server retries the icon after saving.
+      // An unreachable site keeps its address; the server retries after saving.
     }
     if (stale())
       return
-    if (found) {
-      iconStatus.value = 'found'
-    }
-    else if (url === initialURL && (model.value.icon?.src || model.value.icon?.text)) {
-      // Keep the saved icon when its own site cannot be reached right now.
-      iconStatus.value = 'idle'
-      if (force)
-        ms.warning(t('iconItem.geticonFail'))
+    const fallback = hostname(url)
+    const title = info?.title && info.title !== fallback ? [...info.title].slice(0, 20).join('') : ''
+    const description = [...(info?.description || '')].slice(0, 100).join('')
+    const icon: Panel.ItemIcon | null = info?.iconUrl ? { itemType: 2, src: info.originalIconUrl || info.iconUrl, cachedSrc: info.iconUrl } : null
+    if (replace) {
+      model.value.title = title || fallback
+      model.value.description = description
+      model.value.icon = icon
     }
     else {
-      model.value.icon = null
-      iconStatus.value = 'missing'
+      // Never trade saved details for empty results from a briefly unreachable site.
+      if (title && (force || !model.value.title || model.value.title === fallback))
+        model.value.title = title
+      if (description && (force || !model.value.description))
+        model.value.description = description
+      if (icon && (force || !hasImageIcon(model.value.icon)))
+        model.value.icon = icon
     }
+    if (!model.value.title)
+      model.value.title = fallback
+    if (icon)
+      detectStatus.value = 'found'
+    else if (!replace && (model.value.icon?.src || model.value.icon?.text))
+      detectStatus.value = 'idle'
+    else
+      detectStatus.value = 'missing'
+    if (force && !replace && !icon && !title && !description)
+      ms.warning(t('iconItem.geticonFail'))
   }
   // Keep a completed lookup reusable across debounce, blur and save.
   lookupURL = url
@@ -201,8 +195,8 @@ function handleUrlBlur() {
   if (!url)
     return
   model.value.url = url
-  if (url !== lookupURL || !model.value.title)
-    fillHostname(url)
+  if (!model.value.title)
+    model.value.title = hostname(url)
   if (url !== initialURL || !hasImageIcon(model.value.icon))
     return detectSite(url)
 }
@@ -215,16 +209,19 @@ watch(() => model.value.url, (value, old) => {
   lookupSeq++
   lookupURL = ''
   lookupPromise = undefined
-  iconStatus.value = 'idle'
-  if (url && url === initialURL && initialIcon && hasImageIcon(initialIcon)) {
-    // Back to the saved address: show its saved icon again.
-    model.value.icon = { ...initialIcon }
-    return
+  detectStatus.value = 'idle'
+  if (url && url === initialURL) {
+    // Back to the saved address: show its saved details again.
+    model.value.title = initial.title
+    model.value.description = initial.description
+    model.value.icon = initial.icon ? { ...initial.icon } : null
+    if (hasImageIcon(initial.icon))
+      return
   }
-  model.value.icon = null
-  if (model.value.description === autoDescription) {
+  else {
+    model.value.title = ''
     model.value.description = ''
-    autoDescription = ''
+    model.value.icon = null
   }
   lookupTimer = setTimeout(() => { handleUrlBlur() }, 450)
 })
@@ -256,17 +253,16 @@ watch(() => props.visible, (visible) => {
   clearTimeout(lookupTimer)
   lookupURL = ''
   lookupPromise = undefined
-  autoTitle = autoDescription = ''
-  iconStatus.value = 'idle'
+  detectStatus.value = 'idle'
   if (visible) {
     model.value = props.itemInfo ? { ...props.itemInfo, icon: props.itemInfo.icon ? { ...props.itemInfo.icon } : null } : { ...restoreDefault }
     initialURL = normalizeURL(model.value.url || '')
-    initialIcon = model.value.icon ? { ...model.value.icon } : null
+    initial = { title: model.value.title, description: model.value.description, icon: model.value.icon ? { ...model.value.icon } : null }
     if (props.itemGroupId)
       model.value.itemIconGroupId = props.itemGroupId
     getGroupListOptions()
-    // Bookmarks saved without a site icon look it up again when opened.
-    if (initialURL && !hasImageIcon(initialIcon))
+    // Bookmarks saved without a site icon look the site up again when opened.
+    if (initialURL && !hasImageIcon(initial.icon))
       detectSite(initialURL)
   }
 }, { immediate: true })
@@ -306,28 +302,24 @@ function getGroupListOptions() {
           <NInput v-model:value="model.url" type="text" :maxlength="1000" :placeholder="$t('iconItem.urlPlaceholder')" @blur="handleUrlBlur" />
         </NFormItem>
         <div class="mb-5 flex items-center gap-3">
-          <ItemIcon :item-icon="model.icon" :size="44" eager :fallback-text="model.title?.slice(0, 2)" />
-          <span class="min-w-0 flex-1 text-sm opacity-70">
-            {{ iconStatus === 'loading' ? $t('iconItem.iconDetecting') : iconStatus === 'found' ? $t('iconItem.iconDetected') : iconStatus === 'missing' ? $t('iconItem.iconMissing') : $t('iconItem.iconAuto') }}
-          </span>
-          <NButton text type="primary" :disabled="!model.url" :loading="iconStatus === 'loading'" @click="detectSite(model.url, true)">
+          <ItemIcon :item-icon="model.icon" :size="48" eager :fallback-text="model.title?.slice(0, 2)" />
+          <div class="min-w-0 flex-1">
+            <div class="truncate font-medium">
+              {{ model.title || $t('iconItem.titlePending') }}
+            </div>
+            <div v-if="model.description" class="truncate text-sm opacity-70" :title="model.description">
+              {{ model.description }}
+            </div>
+            <div class="text-xs opacity-60">
+              {{ detectStatus === 'loading' ? $t('iconItem.iconDetecting') : detectStatus === 'found' ? $t('iconItem.iconDetected') : detectStatus === 'missing' ? $t('iconItem.iconMissing') : $t('iconItem.iconAuto') }}
+            </div>
+          </div>
+          <NButton text type="primary" :disabled="!model.url" :loading="detectStatus === 'loading'" @click="detectSite(model.url, true)">
             {{ $t('iconItem.redetect') }}
           </NButton>
         </div>
-        <NGrid cols="2" :x-gap="10" item-responsive>
-          <NGridItem span="2 500:1">
-            <NFormItem path="title" :label="$t('common.title')">
-              <NInput v-model:value="model.title" type="text" show-count :maxlength="20" />
-            </NFormItem>
-          </NGridItem>
-          <NGridItem span="2 500:1">
-            <NFormItem path="itemIconGroupId" :label="t('iconItem.iconGroup')">
-              <NSelect v-model:value="model.itemIconGroupId" :options="itemIconGroupOptions" />
-            </NFormItem>
-          </NGridItem>
-        </NGrid>
-        <NFormItem path="description" :label="$t('common.description')">
-          <NInput v-model:value="model.description" type="text" show-count :maxlength="100" />
+        <NFormItem path="itemIconGroupId" :label="t('iconItem.iconGroup')">
+          <NSelect v-model:value="model.itemIconGroupId" :options="itemIconGroupOptions" />
         </NFormItem>
         <NFormItem path="lanUrl" :label="$t('iconItem.lanUrl')">
           <NInput v-model:value="model.lanUrl" type="text" :maxlength="1000" :placeholder="$t('iconItem.lanUrlInputPlaceholder')" />

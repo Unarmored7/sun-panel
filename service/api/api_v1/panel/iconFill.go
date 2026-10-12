@@ -3,6 +3,7 @@ package panel
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"strings"
 	"sun-panel/global"
 	"sun-panel/lib/iconcache"
@@ -12,8 +13,9 @@ import (
 	"time"
 )
 
-// Cards saved without an icon (imports, or a browser lookup that failed or was
-// skipped) get one discovered on the server; the next page load shows it.
+// Cards saved without an icon, name or description (imports, or a browser
+// lookup that failed or was skipped) get them discovered on the server; the
+// next page load shows them.
 var iconFill = struct {
 	sync.Mutex
 	wg      sync.WaitGroup
@@ -24,6 +26,28 @@ var iconFill = struct {
 
 func missingIcon(icon datatype.ItemIconIconInfo) bool {
 	return strings.TrimSpace(icon.Src) == "" && strings.TrimSpace(icon.Text) == ""
+}
+
+// Names that are only the address fallback from the browser or saveCard.
+func hostnameTitle(card models.ItemIcon) bool {
+	u, err := url.Parse(card.Url)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	title := strings.TrimSpace(card.Title)
+	return title == "" || title == host || title == clipRunes(strings.TrimPrefix(host, "www."), 20)
+}
+
+func incompleteCard(card models.ItemIcon) bool {
+	return missingIcon(card.Icon) || hostnameTitle(card) || strings.TrimSpace(card.Description) == ""
+}
+
+func clipRunes(value string, limit int) string {
+	if runes := []rune(value); len(runes) > limit {
+		return string(runes[:limit])
+	}
+	return value
 }
 
 func fillMissingIcons(cards []models.ItemIcon) {
@@ -40,7 +64,7 @@ func fillMissingIcons(cards []models.ItemIcon) {
 		}
 	}
 	for _, card := range cards {
-		if card.ID == 0 || !missingIcon(card.Icon) || iconFill.pending[card.ID] || len(iconFill.pending) >= 256 || now.Before(iconFill.retry[card.Url]) {
+		if card.ID == 0 || !incompleteCard(card) || iconFill.pending[card.ID] || len(iconFill.pending) >= 256 || now.Before(iconFill.retry[card.Url]) {
 			continue
 		}
 		iconFill.pending[card.ID] = true
@@ -61,10 +85,11 @@ func fillIcon(cache *iconcache.Cache, id, user uint, site string) {
 	info, err := cache.Discover(ctx, site)
 	cancel()
 	<-iconFill.slots
-	if err != nil || info.OriginalIconURL == "" {
-		iconFill.Lock()
-		iconFill.retry[site] = time.Now().Add(30 * time.Minute)
-		iconFill.Unlock()
+	// Successful lookups also wait: a site without a description is not re-read on every save.
+	iconFill.Lock()
+	iconFill.retry[site] = time.Now().Add(30 * time.Minute)
+	iconFill.Unlock()
+	if err != nil && info.Title == "" {
 		return
 	}
 	cardMu.Lock()
@@ -75,11 +100,21 @@ func fillIcon(cache *iconcache.Cache, id, user uint, site string) {
 		return
 	}
 	json.Unmarshal([]byte(card.IconJson), &card.Icon)
-	if !missingIcon(card.Icon) {
+	changes := map[string]interface{}{}
+	if missingIcon(card.Icon) && info.OriginalIconURL != "" {
+		icon, _ := json.Marshal(datatype.ItemIconIconInfo{ItemType: 2, Src: info.OriginalIconURL})
+		changes["icon_json"] = string(icon)
+	}
+	if hostnameTitle(card) && info.Title != "" && info.Title != card.Title {
+		changes["title"] = clipRunes(info.Title, 20)
+	}
+	if strings.TrimSpace(card.Description) == "" && info.Description != "" {
+		changes["description"] = clipRunes(info.Description, 100)
+	}
+	if len(changes) == 0 {
 		return
 	}
-	icon, _ := json.Marshal(datatype.ItemIconIconInfo{ItemType: 2, Src: info.OriginalIconURL})
-	if err := global.Db.Model(&models.ItemIcon{}).Where("id=? AND user_id=?", id, user).UpdateColumn("icon_json", string(icon)).Error; err != nil && global.Logger != nil {
-		global.Logger.Error("Saving discovered icon failed: ", err)
+	if err := global.Db.Model(&models.ItemIcon{}).Where("id=? AND user_id=?", id, user).UpdateColumns(changes).Error; err != nil && global.Logger != nil {
+		global.Logger.Error("Saving discovered site details failed: ", err)
 	}
 }

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, defineEmits, defineProps, onBeforeUnmount, ref, watch } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
-import { NButton, NForm, NFormItem, NGrid, NGridItem, NInput, NInputGroup, NModal, NSelect, useMessage } from 'naive-ui'
-import IconEditor from './IconEditor.vue'
+import { NButton, NForm, NFormItem, NGrid, NGridItem, NInput, NModal, NSelect, useMessage } from 'naive-ui'
+import ItemIcon from '@/components/common/ItemIcon/index.vue'
 import { edit, getSiteFavicon } from '@/api/panel/itemIcon'
 import { getList as getGroupList } from '@/api/panel/itemIconGroup'
 import { t } from '@/locales'
@@ -17,7 +17,6 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emit>()
 const ms = useMessage()
 const submitLoading = ref(false)
-const getIconLoading = ref([false, false])
 const itemIconGroupOptions = ref<{
   label: string
   value: number
@@ -103,12 +102,15 @@ async function editApi() {
   submitLoading.value = false
 }
 
+type IconStatus = 'idle' | 'loading' | 'found' | 'missing'
+const iconStatus = ref<IconStatus>('idle')
 let lookupTimer: ReturnType<typeof setTimeout> | undefined
 let generation = 0
 let initialURL = ''
+let initialIcon: Panel.ItemIcon | null = null
 let autoTitle = ''
 let autoDescription = ''
-let autoIcon = ''
+let lookupSeq = 0
 let lookupURL = ''
 let lookupPromise: Promise<void> | undefined
 
@@ -124,6 +126,10 @@ function normalizeURL(raw: string) {
   }
 }
 
+function hasImageIcon(icon: Panel.ItemIcon | null | undefined) {
+  return icon?.itemType === 2 && !!icon.src
+}
+
 function fillHostname(url: string) {
   if (!model.value.title || model.value.title === autoTitle) {
     autoTitle = new URL(url).hostname.replace(/^www\./, '').slice(0, 20)
@@ -131,19 +137,23 @@ function fillHostname(url: string) {
   }
 }
 
-async function getIconByUrl(raw: string, loadingIndex: number, force = true) {
+// The icon always comes from the site: a lookup replaces it, and a new URL without one falls back to the title.
+function detectSite(raw: string, force = false) {
   const url = normalizeURL(raw)
   if (!url)
     return
   if (!force && lookupURL === url && lookupPromise)
     return lookupPromise
   const currentGeneration = generation
+  const seq = ++lookupSeq
+  // Any later URL edit or lookup supersedes this one.
+  const stale = () => !show.value || currentGeneration !== generation || seq !== lookupSeq
+  iconStatus.value = 'loading'
   const task = async () => {
-    getIconLoading.value[loadingIndex] = true
+    let found = false
     try {
       const { code, data } = await getSiteFavicon<{ iconUrl: string; originalIconUrl: string; title: string; description: string }>(url)
-      const currentURL = loadingIndex === 0 ? model.value.url : model.value.lanUrl || ''
-      if (!show.value || currentGeneration !== generation || normalizeURL(currentURL) !== url)
+      if (stale())
         return
       if (code === 0) {
         if (data.title && (!model.value.title || model.value.title === autoTitle)) {
@@ -154,30 +164,35 @@ async function getIconByUrl(raw: string, loadingIndex: number, force = true) {
           autoDescription = [...data.description].slice(0, 100).join('')
           model.value.description = autoDescription
         }
-        if (data.iconUrl && (force || !model.value.icon || model.value.icon.src === autoIcon)) {
-          autoIcon = data.originalIconUrl || data.iconUrl
-          model.value.icon = { itemType: 2, src: autoIcon, cachedSrc: data.iconUrl }
-        }
-        else if (force && !data.iconUrl) {
-          ms.warning(t('iconItem.geticonFail'))
+        if (data.iconUrl) {
+          model.value.icon = { itemType: 2, src: data.originalIconUrl || data.iconUrl, cachedSrc: data.iconUrl }
+          found = true
         }
       }
     }
-    finally {
-      if (currentGeneration === generation && normalizeURL(loadingIndex === 0 ? model.value.url || '' : model.value.lanUrl || '') === url)
-        getIconLoading.value[loadingIndex] = false
+    catch {
+      // An unreachable site keeps its URL; the server retries the icon after saving.
+    }
+    if (stale())
+      return
+    if (found) {
+      iconStatus.value = 'found'
+    }
+    else if (url === initialURL && (model.value.icon?.src || model.value.icon?.text)) {
+      // Keep the saved icon when its own site cannot be reached right now.
+      iconStatus.value = 'idle'
+      if (force)
+        ms.warning(t('iconItem.geticonFail'))
+    }
+    else {
+      model.value.icon = null
+      iconStatus.value = 'missing'
     }
   }
   // Keep a completed lookup reusable across debounce, blur and save.
-  const promise = task().catch(() => {
-    if (force && currentGeneration === generation && show.value)
-      ms.warning(t('iconItem.geticonFail'))
-  })
-  if (loadingIndex === 0) {
-    lookupURL = url
-    lookupPromise = promise
-  }
-  return promise
+  lookupURL = url
+  lookupPromise = task()
+  return lookupPromise
 }
 
 function handleUrlBlur() {
@@ -188,18 +203,25 @@ function handleUrlBlur() {
   model.value.url = url
   if (url !== lookupURL || !model.value.title)
     fillHostname(url)
-  if (url !== initialURL)
-    return getIconByUrl(url, 0, false)
+  if (url !== initialURL || !hasImageIcon(model.value.icon))
+    return detectSite(url)
 }
 
-watch(() => model.value.url, (value) => {
-  clearTimeout(lookupTimer)
-  if (!show.value || normalizeURL(value || '') === initialURL || normalizeURL(value || '') === lookupURL)
+watch(() => model.value.url, (value, old) => {
+  const url = normalizeURL(value || '')
+  if (!show.value || url === normalizeURL(old || '') || url === lookupURL)
     return
-  if (model.value.icon?.src === autoIcon) {
-    model.value.icon = null
-    autoIcon = ''
+  clearTimeout(lookupTimer)
+  lookupSeq++
+  lookupURL = ''
+  lookupPromise = undefined
+  iconStatus.value = 'idle'
+  if (url && url === initialURL && initialIcon && hasImageIcon(initialIcon)) {
+    // Back to the saved address: show its saved icon again.
+    model.value.icon = { ...initialIcon }
+    return
   }
+  model.value.icon = null
   if (model.value.description === autoDescription) {
     model.value.description = ''
     autoDescription = ''
@@ -234,14 +256,18 @@ watch(() => props.visible, (visible) => {
   clearTimeout(lookupTimer)
   lookupURL = ''
   lookupPromise = undefined
-  autoTitle = autoDescription = autoIcon = ''
-  getIconLoading.value = [false, false]
+  autoTitle = autoDescription = ''
+  iconStatus.value = 'idle'
   if (visible) {
     model.value = props.itemInfo ? { ...props.itemInfo, icon: props.itemInfo.icon ? { ...props.itemInfo.icon } : null } : { ...restoreDefault }
     initialURL = normalizeURL(model.value.url || '')
+    initialIcon = model.value.icon ? { ...model.value.icon } : null
     if (props.itemGroupId)
       model.value.itemIconGroupId = props.itemGroupId
     getGroupListOptions()
+    // Bookmarks saved without a site icon look it up again when opened.
+    if (initialURL && !hasImageIcon(initialIcon))
+      detectSite(initialURL)
   }
 }, { immediate: true })
 
@@ -277,42 +303,34 @@ function getGroupListOptions() {
     <div class="max-h-[65vh] overflow-auto p-[5px]">
       <NForm ref="formRef" :model="model" :rules="rules">
         <NFormItem path="url" :label="$t('iconItem.url')">
-          <NInputGroup>
-            <NInput v-model:value="model.url" type="text" :maxlength="1000" placeholder="输入或粘贴网站网址" @blur="handleUrlBlur" />
-            <NButton :disabled="!model.url" :loading="getIconLoading[0]" @click="getIconByUrl(model.url, 0)">
-              {{ $t('iconItem.getIcon') }}
-            </NButton>
-          </NInputGroup>
+          <NInput v-model:value="model.url" type="text" :maxlength="1000" :placeholder="$t('iconItem.urlPlaceholder')" @blur="handleUrlBlur" />
         </NFormItem>
-        <p class="mb-5 text-sm opacity-70">
-          只需输入网址，自动识别名称和图标。重复网址会更新原书签。
-        </p>
+        <div class="mb-5 flex items-center gap-3">
+          <ItemIcon :item-icon="model.icon" :size="44" eager :fallback-text="model.title?.slice(0, 2)" />
+          <span class="min-w-0 flex-1 text-sm opacity-70">
+            {{ iconStatus === 'loading' ? $t('iconItem.iconDetecting') : iconStatus === 'found' ? $t('iconItem.iconDetected') : iconStatus === 'missing' ? $t('iconItem.iconMissing') : $t('iconItem.iconAuto') }}
+          </span>
+          <NButton text type="primary" :disabled="!model.url" :loading="iconStatus === 'loading'" @click="detectSite(model.url, true)">
+            {{ $t('iconItem.redetect') }}
+          </NButton>
+        </div>
         <NGrid cols="2" :x-gap="10" item-responsive>
-          <NGridItem span="2 500:1">
-            <NFormItem path="itemIconGroupId" :label="t('iconItem.iconGroup')">
-              <NSelect v-model:value="model.itemIconGroupId" :options="itemIconGroupOptions" />
-            </NFormItem>
-          </NGridItem>
           <NGridItem span="2 500:1">
             <NFormItem path="title" :label="$t('common.title')">
               <NInput v-model:value="model.title" type="text" show-count :maxlength="20" />
             </NFormItem>
           </NGridItem>
+          <NGridItem span="2 500:1">
+            <NFormItem path="itemIconGroupId" :label="t('iconItem.iconGroup')">
+              <NSelect v-model:value="model.itemIconGroupId" :options="itemIconGroupOptions" />
+            </NFormItem>
+          </NGridItem>
         </NGrid>
-
-        <NFormItem path="icon" :label="$t('common.icon')">
-          <IconEditor v-model:item-icon="model.icon" />
-        </NFormItem>
-        <NFormItem path="lanUrl" :label="$t('iconItem.lanUrl')">
-          <NInputGroup>
-            <NInput v-model:value="model.lanUrl" type="text" :maxlength="1000" :placeholder="$t('iconItem.lanUrlInputPlaceholder')" />
-            <NButton :disabled="!model.lanUrl" :loading="getIconLoading[1]" @click="getIconByUrl(model.lanUrl || '', 1)">
-              {{ $t('iconItem.getIcon') }}
-            </NButton>
-          </NInputGroup>
-        </NFormItem>
         <NFormItem path="description" :label="$t('common.description')">
           <NInput v-model:value="model.description" type="text" show-count :maxlength="100" />
+        </NFormItem>
+        <NFormItem path="lanUrl" :label="$t('iconItem.lanUrl')">
+          <NInput v-model:value="model.lanUrl" type="text" :maxlength="1000" :placeholder="$t('iconItem.lanUrlInputPlaceholder')" />
         </NFormItem>
         <NFormItem path="openMethod" :label="$t('iconItem.openMethod')">
           <NSelect v-model:value="model.openMethod" :options="options" />

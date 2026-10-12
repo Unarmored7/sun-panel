@@ -31,6 +31,10 @@ func references(db *gorm.DB) ([]string, []string, error) {
 	var notices []models.Notice
 	var settings []models.SystemSetting
 	for _, table := range []interface{}{&cards, &configs, &modules, &users, &notices, &settings} {
+		// Optional tables (notice is never migrated) would otherwise block every run.
+		if !db.Migrator().HasTable(table) {
+			continue
+		}
 		if err := db.Find(table).Error; err != nil {
 			return nil, nil, err
 		}

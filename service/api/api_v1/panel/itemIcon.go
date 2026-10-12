@@ -41,6 +41,7 @@ func (a *ItemIcon) Edit(c *gin.Context) {
 		return
 	}
 	cleanupRemovedIcons(old)
+	fillMissingIcons([]models.ItemIcon{req})
 	readCardIcon(&req)
 	apiReturn.SuccessData(c, req)
 }
@@ -81,6 +82,7 @@ func (a *ItemIcon) AddMultiple(c *gin.Context) {
 		return
 	}
 	cleanupRemovedIcons(old)
+	fillMissingIcons(req)
 	apiReturn.SuccessData(c, req)
 }
 

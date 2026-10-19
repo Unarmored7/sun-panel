@@ -228,6 +228,7 @@
     "iconDetecting": "正在识别网站名称、简介和图标…",
     "iconGroup": "分组",
     "iconMissing": "未找到图标，暂显示名称缩写；保存后服务器会继续尝试",
+    "lookupFailed": "识别请求失败，请检查与导航服务器的连接",
     "newWindowOpen": "新窗口打开",
     "openMethod": "打开方式",
     "redetect": "重新识别",

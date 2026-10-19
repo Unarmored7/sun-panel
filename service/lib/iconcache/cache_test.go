@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"image/png"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -201,6 +202,35 @@ func TestSiteNamePrefersShortNames(t *testing.T) {
 	} {
 		if got := siteName(c.title, c.site, page(c.page)); got != c.want {
 			t.Errorf("%q -> %q, want %q", c.title, got, c.want)
+		}
+	}
+}
+
+func TestDiscoveryDecodesCharsetsAndExplainsFailures(t *testing.T) {
+	gbk := []byte("<html><head><meta charset=\"gbk\"><title>\xd6\xd0\xce\xc4\xd5\xbe</title><meta name=\"description\" content=\"\xbc\xf2\xbd\xe9\"></head></html>")
+	data := bitmap(t)
+	cache := New(t.TempDir(), &http.Client{Transport: roundTrip(func(r *http.Request) (*http.Response, error) {
+		switch {
+		case r.URL.Path == "/favicon.ico":
+			return reply(r, data), nil
+		case r.URL.Host == "gbk.example":
+			return reply(r, gbk), nil
+		case r.URL.Host == "challenge.example":
+			return reply(r, []byte(`<html><title>Client Challenge</title><meta name="description" content="verify"></html>`)), nil
+		case r.URL.Host == "refused.example":
+			return &http.Response{StatusCode: 403, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("")), Request: r}, nil
+		}
+		return nil, &net.DNSError{Err: "no such host", Name: r.URL.Host, IsNotFound: true}
+	})})
+	for _, c := range []struct{ site, title, description, problem string }{
+		{"https://gbk.example/", "中文站", "简介", ""},
+		{"https://challenge.example/", "challenge.example", "", "人机验证"},
+		{"https://refused.example/", "refused.example", "", "HTTP 403"},
+		{"https://missing.example/", "missing.example", "", "无法解析"},
+	} {
+		info, _ := cache.Discover(context.Background(), c.site)
+		if info.Title != c.title || info.Description != c.description || !strings.Contains(info.Error, c.problem) || (c.problem == "" && info.Error != "") {
+			t.Errorf("%s: %+v", c.site, info)
 		}
 	}
 }

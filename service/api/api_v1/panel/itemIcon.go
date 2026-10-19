@@ -229,9 +229,12 @@ func (a *ItemIcon) GetSiteFavicon(c *gin.Context) {
 		apiReturn.Error(c, "Icon cache is unavailable")
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 12*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
 	defer cancel()
 	info, _ := iconcache.Default.Discover(ctx, normalized)
+	if info.Error != "" && global.Logger != nil {
+		global.Logger.Warn("Site lookup failed for ", normalized, ": ", info.Error)
+	}
 	// An unreachable site's URL remains usable; the UI falls back to its initial.
 	apiReturn.SuccessData(c, info)
 }

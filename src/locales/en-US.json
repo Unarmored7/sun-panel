@@ -228,6 +228,7 @@
     "iconDetecting": "Detecting site name, description and icon…",
     "iconGroup": "Group",
     "iconMissing": "No icon found; name initials are shown and the server keeps trying after saving",
+    "lookupFailed": "The lookup request failed; check the connection to the server",
     "newWindowOpen": "Open in new window",
     "openMethod": "Open method",
     "redetect": "Detect again",

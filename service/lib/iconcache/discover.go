@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"net"
 	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sun-panel/lib/remoteimage"
+
+	"golang.org/x/net/html/charset"
 )
 
 type SiteInfo struct {
@@ -18,6 +22,8 @@ type SiteInfo struct {
 	OriginalIconURL string `json:"originalIconUrl"`
 	Title           string `json:"title"`
 	Description     string `json:"description"`
+	// Why the page could not be read, in words the editor can show.
+	Error string `json:"error,omitempty"`
 }
 type candidate struct {
 	url   string
@@ -31,11 +37,23 @@ func (c *Cache) Discover(ctx context.Context, raw string) (SiteInfo, error) {
 	}
 	info := SiteInfo{Title: strings.TrimPrefix(base.Hostname(), "www.")}
 	options := []candidate{}
-	data, _, final, err := remoteimage.Get(ctx, c.Client, raw, 1<<20)
-	if err == nil {
+	data, contentType, final, err := remoteimage.Get(ctx, c.Client, raw, 1<<20)
+	if err != nil {
+		info.Error = describeFailure(err)
+	} else {
 		base = final
-		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(data))
-		if err == nil {
+		// Decode GBK and other declared charsets; goquery assumes UTF-8.
+		reader, charsetErr := charset.NewReader(bytes.NewReader(data), contentType)
+		if charsetErr != nil {
+			reader = bytes.NewReader(data)
+		}
+		doc, err := goquery.NewDocumentFromReader(reader)
+		if err == nil && challengePage(doc.Find("title").First().Text()) {
+			// Bot checks ("Just a moment...", "Client Challenge") are not the site's name.
+			info.Error = "网站启用了人机验证，无法读取名称和简介"
+			doc = nil
+		}
+		if doc != nil {
 			title := doc.Find("title").First().Text()
 			if strings.TrimSpace(title) == "" {
 				title, _ = doc.Find(`meta[property="og:title"]`).First().Attr("content")
@@ -158,4 +176,28 @@ func clip(value string, limit int) string {
 		return strings.TrimSpace(string(runes[:limit]))
 	}
 	return value
+}
+
+var challengeTitles = regexp.MustCompile(`(?i)just a moment|client challenge|attention required|checking your browser|access denied|ddos-guard|security check|安全验证|人机验证|访问验证|^\s*40[13]\b`)
+
+func challengePage(title string) bool {
+	return challengeTitles.MatchString(strings.TrimSpace(title))
+}
+
+func describeFailure(err error) string {
+	var status remoteimage.StatusError
+	var dnsErr *net.DNSError
+	var netErr net.Error
+	switch {
+	case errors.As(err, &status):
+		return fmt.Sprintf("网站拒绝了访问（HTTP %d）", status.Code)
+	case errors.Is(err, remoteimage.ErrNotPublic):
+		return "网址指向内网或保留地址，出于安全不予访问"
+	case errors.As(err, &dnsErr):
+		return "无法解析该域名"
+	case errors.Is(err, context.DeadlineExceeded), errors.As(err, &netErr) && netErr.Timeout():
+		return "连接网站超时"
+	default:
+		return "无法连接该网站"
+	}
 }

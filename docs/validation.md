@@ -65,3 +65,10 @@ CLS 前后均为 0。本机 Linux 缺少字体栈中列出的中文字体，字�
 - 下载客户端改用标准双栈拨号（IPv6/IPv4 并行回退），公网地址校验在每次实际连接时执行；请求带常见浏览器 UA 与中文 Accept-Language；页面按声明的字符集（如 GBK）解码；“Client Challenge / Just a moment” 等人机验证页不再被当作网站名称。
 - 识别失败时返回原因（HTTP 状态、域名解析失败、超时、内网地址、人机验证），编辑器状态行显示，服务器日志记录 `Site lookup failed for <网址>: <原因>`。
 - 新增测试覆盖 GBK 页面、人机验证页、403 与域名解析失败；`go test ./...`、类型检查、ESLint 0 错误通过。本地浏览器验证 GitHub（名称、简介、图标）、PyPI 项目页（人机验证提示，图标仍获取）、不存在的域名与内网地址的提示。
+
+## 重新识别与清理（2026-10-28）
+
+- 新增 `POST /panel/itemIcon/refill`（需登录）与分组管理按钮：后台补全缺失详情，替换失效图片图标与在线图标库图标；保留已有名称、简介、文字图标与正常图标，正常书签不请求其网站。新增测试覆盖上述规则。
+- 空分组的“添加”卡片改为本地绘制，首页不再请求 api.iconify.design；本地浏览器验证：对旧在线图标与 404 图标执行重新识别后，页面无外部请求。
+- 删除未使用代码：HoverButton、Verification、JsonImportExport 组件、组件聚合导出文件（曾导致首页打包膨胀）、useIconRender、useBasicLayout、403 图标、utils/functions、admin store、后端 siteFavicon 包及 6 个未使用的 SVG 图标。
+- `go test ./...`、类型检查、ESLint 0 错误（24 条原有警告）、首页功能回归通过。

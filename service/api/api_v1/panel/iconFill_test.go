@@ -11,6 +11,7 @@ import (
 	"sun-panel/lib/iconcache"
 	"sun-panel/models"
 	"sun-panel/models/datatype"
+	"sync"
 	"sync/atomic"
 	"testing"
 )
@@ -81,5 +82,63 @@ func TestSavedCardsGetMissingDetailsDiscovered(t *testing.T) {
 	iconFill.wg.Wait()
 	if down.Load() != before {
 		t.Fatal("failed site retried immediately")
+	}
+}
+
+func TestRefillReplacesDeadAndOnlineIconsOnly(t *testing.T) {
+	db := testDB(t)
+	group := createGroup(t, db, 1, 0)
+	var pages sync.Map
+	oldCache := iconcache.Default
+	iconcache.Default = iconcache.New(t.TempDir(), &http.Client{Transport: iconTransport(func(r *http.Request) (*http.Response, error) {
+		body := []byte(`<html><head><title>Site</title><meta name="description" content="Found description"><link rel="apple-touch-icon" href="/touch.png"></head></html>`)
+		switch {
+		case r.URL.Path == "/dead.png":
+			return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader("")), Header: http.Header{}, Request: r}, nil
+		case strings.HasSuffix(r.URL.Path, ".png"):
+			var data bytes.Buffer
+			png.Encode(&data, image.NewNRGBA(image.Rect(0, 0, 4, 4)))
+			body = data.Bytes()
+		default:
+			pages.Store(r.URL.Host, true)
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(body)), Header: http.Header{}, Request: r}, nil
+	})})
+	t.Cleanup(func() { iconFill.wg.Wait(); iconcache.Default = oldCache })
+	add := func(site string, icon datatype.ItemIconIconInfo) {
+		raw, _ := json.Marshal(icon)
+		db.Create(&models.ItemIcon{UserId: 1, ItemIconGroupId: int(group.ID), Url: site, Title: "chosen", Description: "kept", IconJson: string(raw)})
+	}
+	add("https://online.example", datatype.ItemIconIconInfo{ItemType: 3, Text: "mdi:github"})
+	add("https://dead.example", datatype.ItemIconIconInfo{ItemType: 2, Src: "https://cdn.example/dead.png"})
+	add("https://alive.example", datatype.ItemIconIconInfo{ItemType: 2, Src: "https://cdn.example/alive.png"})
+	add("https://text.example", datatype.ItemIconIconInfo{ItemType: 1, Text: "T"})
+	res := request(t, 1, false, (&ItemIcon{}).Refill, nil)
+	if res["code"] != float64(0) || res["data"].(map[string]interface{})["queued"] != float64(3) {
+		t.Fatal(res)
+	}
+	iconFill.wg.Wait()
+	icon := func(site string) datatype.ItemIconIconInfo {
+		var card models.ItemIcon
+		db.Where("url=?", site).First(&card)
+		json.Unmarshal([]byte(card.IconJson), &card.Icon)
+		if card.Title != "chosen" || card.Description != "kept" {
+			t.Fatal("chosen details replaced", card.Title, card.Description)
+		}
+		return card.Icon
+	}
+	for _, site := range []string{"https://online.example", "https://dead.example"} {
+		if got := icon(site); got.ItemType != 2 || got.Src != site+"/touch.png" {
+			t.Fatal("icon not replaced", site, got)
+		}
+	}
+	if got := icon("https://alive.example"); got.Src != "https://cdn.example/alive.png" {
+		t.Fatal("working icon replaced", got)
+	}
+	if got := icon("https://text.example"); got.ItemType != 1 {
+		t.Fatal("text icon replaced", got)
+	}
+	if _, read := pages.Load("alive.example"); read {
+		t.Fatal("healthy card's site was queried")
 	}
 }

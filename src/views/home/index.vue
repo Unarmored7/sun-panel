@@ -534,7 +534,7 @@ function handleAddItem(itemIconGroupId?: number) {
               <div v-if="itemGroup.items.length === 0 && authStore.visitMode === VisitMode.VISIT_MODE_LOGIN" class="not-drag">
                 <AppIcon
                   class="cursor-pointer"
-                  :item-info="{ icon: { itemType: 3, text: 'subway:add' }, title: t('common.add'), url: '', openMethod: 0 }"
+                  :item-info="{ icon: { itemType: 1, text: '+' }, title: t('common.add'), url: '', openMethod: 0 }"
                   :icon-text-color="groupCardStyles[itemGroupIndex].textColor"
                   :icon-text-info-hide-description="groupCardStyles[itemGroupIndex].hideDescription"
                   :icon-text-icon-hide-title="groupCardStyles[itemGroupIndex].hideTitle"

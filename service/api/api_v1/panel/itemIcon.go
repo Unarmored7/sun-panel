@@ -2,6 +2,7 @@ package panel
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sun-panel/api/api_v1/common/apiData/commonApiStructs"
 	"sun-panel/api/api_v1/common/apiData/panelApiStructs"
@@ -207,6 +208,21 @@ func (a *ItemIcon) SaveSort(c *gin.Context) {
 	}
 
 	apiReturn.Success(c)
+}
+
+// Refill queues the user's bookmarks for a background re-check: missing names,
+// descriptions and icons are looked up, and dead or online icons are replaced.
+func (a *ItemIcon) Refill(c *gin.Context) {
+	user, _ := base.GetCurrentUserInfo(c)
+	var cards []models.ItemIcon
+	if err := global.Db.Where("user_id=?", user.ID).Find(&cards).Error; err != nil {
+		apiReturn.ErrorDatabase(c, err.Error())
+		return
+	}
+	for i := range cards {
+		json.Unmarshal([]byte(cards[i].IconJson), &cards[i].Icon)
+	}
+	apiReturn.SuccessData(c, gin.H{"queued": refillCards(cards)})
 }
 
 // 支持获取并直接下载对方网站图标到服务器

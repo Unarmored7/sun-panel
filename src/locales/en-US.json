@@ -232,6 +232,10 @@
     "newWindowOpen": "Open in new window",
     "openMethod": "Open method",
     "redetect": "Detect again",
+    "refill": "Re-detect icons and descriptions",
+    "refillHint": "Fills in missing icons, names and descriptions in the background and replaces dead or online-library icons; existing names and descriptions are kept",
+    "refillNothing": "Every bookmark already has an icon, name and description",
+    "refillStarted": "Checking {count} bookmarks in the background; refresh the page later to see updates",
     "titlePending": "The name is detected from the URL",
     "url": "URL",
     "urlPlaceholder": "Enter or paste the site URL"

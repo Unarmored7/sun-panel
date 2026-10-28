@@ -232,6 +232,10 @@
     "newWindowOpen": "新窗口打开",
     "openMethod": "打开方式",
     "redetect": "重新识别",
+    "refill": "重新识别图标与简介",
+    "refillHint": "在后台补全缺失的图标、名称和简介，并替换已失效或依赖在线图标库的图标；已有的名称和简介不会被覆盖",
+    "refillNothing": "所有书签的图标、名称和简介都已完整",
+    "refillStarted": "已开始在后台检查 {count} 个书签，完成后刷新页面即可看到更新",
     "titlePending": "名称将根据网址自动识别",
     "url": "地址",
     "urlPlaceholder": "输入或粘贴网站网址"

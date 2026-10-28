@@ -48,3 +48,10 @@ export function getSiteFavicon<T>(url: string) {
     data: { url },
   })
 }
+
+// Re-checks the user's bookmarks in the background; returns how many were queued.
+export function refill<T>() {
+  return post<T>({
+    url: '/panel/itemIcon/refill',
+  })
+}

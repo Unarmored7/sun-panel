@@ -4,6 +4,7 @@ import type { FormInst, FormRules } from 'naive-ui'
 import { NButton, NCard, NForm, NFormItem, NInput, NSelect, NSwitch, useDialog, useMessage } from 'naive-ui'
 import { VueDraggable } from 'vue-draggable-plus'
 import { deletes, edit, getList, saveSort } from '@/api/panel/itemIconGroup'
+import { refill } from '@/api/panel/itemIcon'
 import RoundCardModal from '@/components/common/RoundCardModal/index.vue'
 import SvgIcon from '@/components/common/SvgIcon/index.vue'
 import { t } from '@/locales'
@@ -20,6 +21,19 @@ const formRef = ref<FormInst | null>(null)
 const ms = useMessage()
 const dialog = useDialog()
 const sortStatus = ref(false)
+const refillLoading = ref(false)
+
+async function handleRefill() {
+  refillLoading.value = true
+  try {
+    const { code, data } = await refill<{ queued: number }>()
+    if (code === 0)
+      ms.success(data.queued ? t('iconItem.refillStarted', { count: data.queued }) : t('iconItem.refillNothing'), { duration: 6000 })
+  }
+  finally {
+    refillLoading.value = false
+  }
+}
 
 const defaultMNodal = {
   title: '',
@@ -159,6 +173,10 @@ onMounted(() => {
 
       <NButton v-else type="warning" size="small" @click="handleSaveSort">
         {{ $t('common.saveSort') }}
+      </NButton>
+
+      <NButton size="small" style="margin-left: 10px;" :loading="refillLoading" :title="$t('iconItem.refillHint')" @click="handleRefill">
+        {{ $t('iconItem.refill') }}
       </NButton>
     </div>
 

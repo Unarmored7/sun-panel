@@ -1,4 +1,4 @@
-/* Source implementation of Code/my-skills/usagi-design-system. */
+/* Source implementation of Code/skills/usagi-design-system. */
 html, body { background: var(--usagi-bg-base); color: var(--usagi-text-main); font-family: var(--usagi-font-body); line-height: 1.7; }
 body { overflow-x: clip; }
 button, input, select, textarea { font-family: inherit; }

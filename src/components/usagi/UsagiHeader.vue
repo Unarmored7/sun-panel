@@ -105,8 +105,6 @@ const brandTitle = computed(() => {
   color: #FFFFFF;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 

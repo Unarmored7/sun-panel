@@ -51,9 +51,26 @@ func clipRunes(value string, limit int) string {
 }
 
 func fillMissingIcons(cards []models.ItemIcon) {
+	queueFill(cards, false)
+}
+
+// Icons that may need replacing on an explicit refill: legacy online icons load
+// from a third-party CDN, and remote images can disappear from their sites.
+func checkableIcon(icon datatype.ItemIconIconInfo) bool {
+	src := strings.ToLower(strings.TrimSpace(icon.Src))
+	return icon.ItemType == 3 || (icon.ItemType == 2 && (strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://")))
+}
+
+// refillCards re-checks every card the user owns: missing details are looked up
+// and dead or online icons are replaced, ignoring the failed-lookup backoff.
+func refillCards(cards []models.ItemIcon) int {
+	return queueFill(cards, true)
+}
+
+func queueFill(cards []models.ItemIcon, refill bool) int {
 	cache := iconcache.Default
 	if cache == nil || global.Db == nil {
-		return
+		return 0
 	}
 	now := time.Now()
 	iconFill.Lock()
@@ -63,17 +80,21 @@ func fillMissingIcons(cards []models.ItemIcon) {
 			delete(iconFill.retry, site)
 		}
 	}
+	queued := 0
 	for _, card := range cards {
-		if card.ID == 0 || !incompleteCard(card) || iconFill.pending[card.ID] || len(iconFill.pending) >= 256 || now.Before(iconFill.retry[card.Url]) {
+		wanted := incompleteCard(card) || (refill && checkableIcon(card.Icon))
+		if card.ID == 0 || !wanted || iconFill.pending[card.ID] || len(iconFill.pending) >= 256 || (!refill && now.Before(iconFill.retry[card.Url])) {
 			continue
 		}
 		iconFill.pending[card.ID] = true
 		iconFill.wg.Add(1)
-		go fillIcon(cache, card.ID, card.UserId, card.Url)
+		queued++
+		go fillIcon(cache, card.ID, card.UserId, card.Url, refill)
 	}
+	return queued
 }
 
-func fillIcon(cache *iconcache.Cache, id, user uint, site string) {
+func fillIcon(cache *iconcache.Cache, id, user uint, site string, refill bool) {
 	defer iconFill.wg.Done()
 	defer func() {
 		iconFill.Lock()
@@ -81,10 +102,29 @@ func fillIcon(cache *iconcache.Cache, id, user uint, site string) {
 		iconFill.Unlock()
 	}()
 	iconFill.slots <- struct{}{}
+	defer func() { <-iconFill.slots }()
+	var before models.ItemIcon
+	if global.Db.Where("id=? AND user_id=?", id, user).First(&before).Error != nil {
+		return
+	}
+	json.Unmarshal([]byte(before.IconJson), &before.Icon)
+	// A refill replaces an online icon, or a remote image that no longer downloads.
+	replaceIcon := false
+	if refill && checkableIcon(before.Icon) {
+		replaceIcon = before.Icon.ItemType == 3
+		if !replaceIcon {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			_, err := cache.Fetch(ctx, before.Icon.Src)
+			cancel()
+			replaceIcon = err != nil
+		}
+	}
+	if !replaceIcon && !incompleteCard(before) {
+		return
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	info, err := cache.Discover(ctx, site)
 	cancel()
-	<-iconFill.slots
 	// Successful lookups also wait: a site without a description is not re-read on every save.
 	iconFill.Lock()
 	iconFill.retry[site] = time.Now().Add(30 * time.Minute)
@@ -101,7 +141,7 @@ func fillIcon(cache *iconcache.Cache, id, user uint, site string) {
 	}
 	json.Unmarshal([]byte(card.IconJson), &card.Icon)
 	changes := map[string]interface{}{}
-	if missingIcon(card.Icon) && info.OriginalIconURL != "" {
+	if (missingIcon(card.Icon) || (replaceIcon && card.IconJson == before.IconJson)) && info.OriginalIconURL != "" {
 		icon, _ := json.Marshal(datatype.ItemIconIconInfo{ItemType: 2, Src: info.OriginalIconURL})
 		changes["icon_json"] = string(icon)
 	}
@@ -116,5 +156,10 @@ func fillIcon(cache *iconcache.Cache, id, user uint, site string) {
 	}
 	if err := global.Db.Model(&models.ItemIcon{}).Where("id=? AND user_id=?", id, user).UpdateColumns(changes).Error; err != nil && global.Logger != nil {
 		global.Logger.Error("Saving discovered site details failed: ", err)
+	}
+	if replaceIcon && changes["icon_json"] != nil {
+		// The dead or online icon is no longer referenced by this card; cardMu is held,
+		// as for edits, so cleanup cannot race with a save.
+		cleanupRemovedIcons([]models.ItemIcon{before})
 	}
 }

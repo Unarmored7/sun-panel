@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -47,35 +48,34 @@ func publicAddress(ip netip.Addr) bool {
 	return !ip.Is6() || netip.MustParsePrefix("2000::/3").Contains(ip)
 }
 
+var ErrNotPublic = errors.New("remote address is not public")
+
+// StatusError reports a non-200 response, so callers can explain refusals.
+type StatusError struct{ Code int }
+
+func (e StatusError) Error() string { return fmt.Sprintf("remote status %d", e.Code) }
+
 func NewClient() *http.Client {
+	// The standard dialer resolves the host and races IPv6 and IPv4 (Happy Eyeballs),
+	// so a host without a working IPv6 route still connects over IPv4. Control runs for
+	// every address actually dialled, which also covers DNS answers that change.
+	dialer := &net.Dialer{Timeout: 5 * time.Second, Control: func(network, address string, _ syscall.RawConn) error {
+		host, port, err := net.SplitHostPort(address)
+		if err != nil || (port != "80" && port != "443") {
+			return errors.New("unsupported remote address")
+		}
+		ip, err := netip.ParseAddr(host)
+		if err != nil || !publicAddress(ip) {
+			return ErrNotPublic
+		}
+		return nil
+	}}
 	transport := &http.Transport{
-		ForceAttemptHTTP2: true, TLSHandshakeTimeout: 5 * time.Second, ResponseHeaderTimeout: 6 * time.Second,
+		ForceAttemptHTTP2: true, TLSHandshakeTimeout: 6 * time.Second, ResponseHeaderTimeout: 8 * time.Second,
 		IdleConnTimeout: 60 * time.Second, MaxIdleConns: 32, MaxConnsPerHost: 4,
-		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(address)
-			if err != nil || (port != "80" && port != "443") {
-				return nil, errors.New("unsupported remote address")
-			}
-			ips, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
-			if err != nil || len(ips) == 0 {
-				return nil, errors.New("remote DNS lookup failed")
-			}
-			for _, ip := range ips {
-				if !publicAddress(ip) {
-					return nil, errors.New("remote address is not public")
-				}
-			}
-			dialer := net.Dialer{Timeout: 5 * time.Second}
-			for _, ip := range ips {
-				conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
-				if err == nil {
-					return conn, nil
-				}
-			}
-			return nil, errors.New("remote connection failed")
-		},
+		DialContext: dialer.DialContext,
 	}
-	return &http.Client{Transport: transport, Timeout: 8 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	return &http.Client{Transport: transport, Timeout: 10 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 3 {
 			return errors.New("too many redirects")
 		}
@@ -93,14 +93,17 @@ func Get(ctx context.Context, client *http.Client, raw string, limit int64) ([]b
 	if err != nil {
 		return nil, "", nil, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; UsagiNavigation/1.0)")
+	// Many sites refuse requests that do not look like a browser.
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/*,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
 	response, err := client.Do(req)
 	if err != nil {
 		return nil, "", nil, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, "", nil, fmt.Errorf("remote status %d", response.StatusCode)
+		return nil, "", nil, StatusError{response.StatusCode}
 	}
 	if response.ContentLength > limit {
 		return nil, "", nil, errors.New("remote file is too large")

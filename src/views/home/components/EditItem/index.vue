@@ -96,9 +96,20 @@ async function editApi() {
   submitLoading.value = false
 }
 
-interface SiteInfo { iconUrl: string; originalIconUrl: string; title: string; description: string }
+interface SiteInfo { iconUrl: string; originalIconUrl: string; title: string; description: string; error?: string }
 type DetectStatus = 'idle' | 'loading' | 'found' | 'missing'
 const detectStatus = ref<DetectStatus>('idle')
+// Why the site could not be read (refused, timed out, bot check...), shown with the status.
+const detectProblem = ref('')
+const statusText = computed(() => {
+  const problem = detectProblem.value ? `：${detectProblem.value}` : ''
+  switch (detectStatus.value) {
+    case 'loading': return t('iconItem.iconDetecting')
+    case 'found': return t('iconItem.iconDetected') + problem
+    case 'missing': return t('iconItem.iconMissing') + problem
+    default: return t('iconItem.iconAuto')
+  }
+})
 let lookupTimer: ReturnType<typeof setTimeout> | undefined
 let generation = 0
 let initialURL = ''
@@ -141,6 +152,7 @@ function detectSite(raw: string, force = false) {
   const stale = () => !show.value || currentGeneration !== generation || seq !== lookupSeq
   const replace = url !== initialURL
   detectStatus.value = 'loading'
+  detectProblem.value = ''
   const task = async () => {
     let info: SiteInfo | undefined
     try {
@@ -153,6 +165,7 @@ function detectSite(raw: string, force = false) {
     }
     if (stale())
       return
+    detectProblem.value = info ? info.error || '' : t('iconItem.lookupFailed')
     const fallback = hostname(url)
     const title = info?.title && info.title !== fallback ? [...info.title].slice(0, 20).join('') : ''
     const description = [...(info?.description || '')].slice(0, 100).join('')
@@ -209,6 +222,7 @@ watch(() => model.value.url, (value, old) => {
   lookupURL = ''
   lookupPromise = undefined
   detectStatus.value = 'idle'
+  detectProblem.value = ''
   if (url && url === initialURL) {
     // Back to the saved address: show its saved details again.
     model.value.title = initial.title
@@ -253,6 +267,7 @@ watch(() => props.visible, (visible) => {
   lookupURL = ''
   lookupPromise = undefined
   detectStatus.value = 'idle'
+  detectProblem.value = ''
   if (visible) {
     model.value = props.itemInfo ? { ...props.itemInfo, icon: props.itemInfo.icon ? { ...props.itemInfo.icon } : null } : { ...restoreDefault }
     initialURL = normalizeURL(model.value.url || '')
@@ -310,7 +325,7 @@ function getGroupListOptions() {
               {{ model.description }}
             </div>
             <div class="text-xs opacity-60">
-              {{ detectStatus === 'loading' ? $t('iconItem.iconDetecting') : detectStatus === 'found' ? $t('iconItem.iconDetected') : detectStatus === 'missing' ? $t('iconItem.iconMissing') : $t('iconItem.iconAuto') }}
+              {{ statusText }}
             </div>
           </div>
           <NButton text type="primary" :disabled="!model.url" :loading="detectStatus === 'loading'" @click="detectSite(model.url, true)">

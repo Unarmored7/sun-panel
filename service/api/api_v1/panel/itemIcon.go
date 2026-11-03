@@ -2,6 +2,7 @@ package panel
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sun-panel/api/api_v1/common/apiData/commonApiStructs"
 	"sun-panel/api/api_v1/common/apiData/panelApiStructs"
@@ -209,6 +210,21 @@ func (a *ItemIcon) SaveSort(c *gin.Context) {
 	apiReturn.Success(c)
 }
 
+// Refill queues the user's bookmarks for a background re-check: missing names,
+// descriptions and icons are looked up, and dead or online icons are replaced.
+func (a *ItemIcon) Refill(c *gin.Context) {
+	user, _ := base.GetCurrentUserInfo(c)
+	var cards []models.ItemIcon
+	if err := global.Db.Where("user_id=?", user.ID).Find(&cards).Error; err != nil {
+		apiReturn.ErrorDatabase(c, err.Error())
+		return
+	}
+	for i := range cards {
+		json.Unmarshal([]byte(cards[i].IconJson), &cards[i].Icon)
+	}
+	apiReturn.SuccessData(c, gin.H{"queued": refillCards(cards)})
+}
+
 // 支持获取并直接下载对方网站图标到服务器
 func (a *ItemIcon) GetSiteFavicon(c *gin.Context) {
 	var req panelApiStructs.ItemIconGetSiteFaviconReq
@@ -229,9 +245,12 @@ func (a *ItemIcon) GetSiteFavicon(c *gin.Context) {
 		apiReturn.Error(c, "Icon cache is unavailable")
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 12*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
 	defer cancel()
 	info, _ := iconcache.Default.Discover(ctx, normalized)
+	if info.Error != "" && global.Logger != nil {
+		global.Logger.Warn("Site lookup failed for ", normalized, ": ", info.Error)
+	}
 	// An unreachable site's URL remains usable; the UI falls back to its initial.
 	apiReturn.SuccessData(c, info)
 }

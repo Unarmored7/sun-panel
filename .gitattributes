@@ -24,6 +24,9 @@
 *.yaml eol=lf
 *.sh eol=lf
 *.py eol=lf
+*.ini eol=lf
+*.svg eol=lf
+.env eol=lf
 Dockerfile eol=lf
 *.ps1 eol=crlf
 *.cmd eol=crlf

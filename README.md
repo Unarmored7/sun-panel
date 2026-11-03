@@ -17,13 +17,31 @@
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm type-check
+pnpm lint
 pnpm build
 cd service
 go test ./...
 go run .
 ```
 
-另开终端运行 `pnpm dev`。Vite 通过 `.env` 中的 `VITE_APP_API_BASE_URL` 代理 API。本机前端构建可用 `SUN_PANEL_WEB_OUT_DIR=/path/outside/sync pnpm build` 避免同步生成目录。
+另开终端，在仓库根目录运行 `pnpm dev`。Vite 通过 `.env` 中的 `VITE_APP_API_BASE_URL` 代理 API。后端的 `go:embed` 仅包含版本、默认配置和语言文件；前端仍是独立静态资源，Dockerfile 会将构建结果复制到运行镜像的 `/app/web`。单独运行 `go run .` 不会自动构建或内嵌前端页面。
+
+在同步目录内开发时，将前端构建结果放在同步目录之外。macOS/Linux 可用 `SUN_PANEL_WEB_OUT_DIR=/path/outside/sync pnpm build`；Windows PowerShell 则先设置 `$env:SUN_PANEL_WEB_OUT_DIR = 'D:\dev-env\infra\sun-panel\dist'`，再运行 `pnpm build`。Docker 构建使用容器内的默认 `dist/`，不需要此变量。`pnpm build` 还会同步 `.env` 中的前端版本，提交前应检查是否产生预期之外的改动。
+
+## 仓库维护
+
+本 fork 的远程仓库为 [Unarmored7/sun-panel](https://github.com/Unarmored7/sun-panel)。维护前先检查当前分支、工作区及远端提交关系，避免用旧的本地源码覆盖更新：
+
+```sh
+git status --short
+git branch --show-current
+git fetch origin
+git rev-list --left-right --count origin/master...HEAD
+git log --oneline --left-right origin/master...HEAD
+```
+
+计数左侧为远端独有提交，右侧为本地独有提交。两侧都非零时，应先审阅差异并保留本地已有提交；不要直接重置分支。`git fetch` 仅更新远端引用，不合并代码，也不改变生产实例。源代码验证使用上面的类型检查、lint、前端构建和 `go test ./...`；隔离实例的数据与权限验证见下节。历史验证记录不代表当前提交已重新验收，发布前还需按 [正式部署说明](docs/production.md) 核对生产版本、数据和回滚条件。
 
 ## 独立开发实例
 
